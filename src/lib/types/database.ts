@@ -507,6 +507,148 @@ export type Database = {
           },
         ];
       };
+      meal_plan_entries: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          custom_title: string | null;
+          entry_date: string;
+          id: string;
+          meal_plan_id: string;
+          meal_type: Database["public"]["Enums"]["meal_type"];
+          notes: string | null;
+          recipe_id: string | null;
+          servings: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          custom_title?: string | null;
+          entry_date: string;
+          id?: string;
+          meal_plan_id: string;
+          meal_type: Database["public"]["Enums"]["meal_type"];
+          notes?: string | null;
+          recipe_id?: string | null;
+          servings?: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          custom_title?: string | null;
+          entry_date?: string;
+          id?: string;
+          meal_plan_id?: string;
+          meal_type?: Database["public"]["Enums"]["meal_type"];
+          notes?: string | null;
+          recipe_id?: string | null;
+          servings?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_entries_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meal_plan_entries_meal_plan_id_fkey";
+            columns: ["meal_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "meal_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meal_plan_entries_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      meal_plan_member_portions: {
+        Row: {
+          id: string;
+          meal_plan_entry_id: string;
+          portions: number;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          id?: string;
+          meal_plan_entry_id: string;
+          portions?: number;
+          user_id: string;
+        };
+        Update: {
+          id?: string;
+          meal_plan_entry_id?: string;
+          portions?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_member_portions_meal_plan_entry_id_fkey";
+            columns: ["meal_plan_entry_id"];
+            isOneToOne: false;
+            referencedRelation: "meal_plan_entries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meal_plan_member_portions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      meal_plans: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          household_id: string;
+          id: string;
+          name: string;
+          start_date: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          household_id: string;
+          id?: string;
+          name?: string;
+          start_date: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          household_id?: string;
+          id?: string;
+          name?: string;
+          start_date?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "meal_plans_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       nutrition_sources: {
         Row: {
           created_at: string;
@@ -990,6 +1132,127 @@ export type Database = {
           },
         ];
       };
+      shopping_list_items: {
+        Row: {
+          added_by: string | null;
+          category: string | null;
+          checked_at: string | null;
+          checked_by: string | null;
+          created_at: string;
+          id: string;
+          ingredient_name: string;
+          is_checked: boolean;
+          quantity: number | null;
+          recipe_id: string | null;
+          shopping_list_id: string;
+          sort_order: number;
+          unit: Database["public"]["Enums"]["measurement_unit"] | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          added_by?: string | null;
+          category?: string | null;
+          checked_at?: string | null;
+          checked_by?: string | null;
+          created_at?: string;
+          id?: string;
+          ingredient_name: string;
+          is_checked?: boolean;
+          quantity?: number | null;
+          recipe_id?: string | null;
+          shopping_list_id: string;
+          sort_order?: number;
+          unit?: Database["public"]["Enums"]["measurement_unit"] | null;
+        };
+        Update: {
+          added_by?: string | null;
+          category?: string | null;
+          checked_at?: string | null;
+          checked_by?: string | null;
+          created_at?: string;
+          id?: string;
+          ingredient_name?: string;
+          is_checked?: boolean;
+          quantity?: number | null;
+          recipe_id?: string | null;
+          shopping_list_id?: string;
+          sort_order?: number;
+          unit?: Database["public"]["Enums"]["measurement_unit"] | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_items_added_by_fkey";
+            columns: ["added_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopping_list_items_checked_by_fkey";
+            columns: ["checked_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopping_list_items_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopping_list_items_shopping_list_id_fkey";
+            columns: ["shopping_list_id"];
+            isOneToOne: false;
+            referencedRelation: "shopping_lists";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shopping_lists: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          household_id: string;
+          id: string;
+          is_archived: boolean;
+          name: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          household_id: string;
+          id?: string;
+          is_archived?: boolean;
+          name?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          household_id?: string;
+          id?: string;
+          is_archived?: boolean;
+          name?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopping_lists_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopping_lists_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tags: {
         Row: {
           created_at: string;
@@ -1126,6 +1389,7 @@ export type Database = {
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
       shares_household_with: { Args: { p_user_id: string }; Returns: boolean };
       soft_delete_recipe: { Args: { p_recipe_id: string }; Returns: undefined };
+      toggle_shopping_list_item: { Args: { p_item_id: string }; Returns: boolean };
       transfer_household_ownership: {
         Args: { p_household_id: string; p_new_owner_user_id: string };
         Returns: undefined;
@@ -1151,6 +1415,7 @@ export type Database = {
     Enums: {
       household_role: "owner" | "editor" | "viewer";
       invitation_status: "pending" | "accepted" | "declined" | "revoked" | "expired";
+      meal_type: "breakfast" | "lunch" | "dinner" | "snack";
       measurement_unit:
         | "g"
         | "kg"
@@ -1284,6 +1549,7 @@ export const Constants = {
     Enums: {
       household_role: ["owner", "editor", "viewer"],
       invitation_status: ["pending", "accepted", "declined", "revoked", "expired"],
+      meal_type: ["breakfast", "lunch", "dinner", "snack"],
       measurement_unit: ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "slice", "clove"],
       recipe_difficulty: ["easy", "medium", "hard"],
       recipe_visibility: ["personal", "household"],
