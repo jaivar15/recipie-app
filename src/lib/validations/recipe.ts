@@ -71,6 +71,7 @@ const numberFromInput = z
 
 export const recipeIngredientSchema = z.object({
   ingredient_name: z.string().trim().min(1, "Ingredient name is required"),
+  ingredient_id: z.string().uuid().nullable().optional(),
   quantity: numberFromInput,
   unit: z.enum(MEASUREMENT_UNITS).optional(),
   preparation_note: z.string().trim().optional(),

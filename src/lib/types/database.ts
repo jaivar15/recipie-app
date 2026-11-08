@@ -232,6 +232,217 @@ export type Database = {
           },
         ];
       };
+      ingredient_measurement_conversions: {
+        Row: {
+          created_at: string;
+          grams_per_unit: number;
+          id: string;
+          ingredient_id: string;
+          unit: Database["public"]["Enums"]["measurement_unit"];
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          grams_per_unit: number;
+          id?: string;
+          ingredient_id: string;
+          unit: Database["public"]["Enums"]["measurement_unit"];
+        };
+        Update: {
+          created_at?: string;
+          grams_per_unit?: number;
+          id?: string;
+          ingredient_id?: string;
+          unit?: Database["public"]["Enums"]["measurement_unit"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_measurement_conversions_ingredient_id_fkey";
+            columns: ["ingredient_id"];
+            isOneToOne: false;
+            referencedRelation: "ingredients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ingredient_nutrition: {
+        Row: {
+          calcium_mg: number | null;
+          calories_kcal: number | null;
+          carbohydrate_g: number | null;
+          energy_kj: number | null;
+          fat_g: number | null;
+          fibre_g: number | null;
+          folate_ug: number | null;
+          ingredient_id: string;
+          iron_mg: number | null;
+          magnesium_mg: number | null;
+          potassium_mg: number | null;
+          protein_g: number | null;
+          saturated_fat_g: number | null;
+          sodium_mg: number | null;
+          source_detail: string | null;
+          source_id: string | null;
+          sugars_g: number | null;
+          updated_at: string;
+          updated_by: string | null;
+          vitamin_b12_ug: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          calcium_mg?: number | null;
+          calories_kcal?: number | null;
+          carbohydrate_g?: number | null;
+          energy_kj?: number | null;
+          fat_g?: number | null;
+          fibre_g?: number | null;
+          folate_ug?: number | null;
+          ingredient_id: string;
+          iron_mg?: number | null;
+          magnesium_mg?: number | null;
+          potassium_mg?: number | null;
+          protein_g?: number | null;
+          saturated_fat_g?: number | null;
+          sodium_mg?: number | null;
+          source_detail?: string | null;
+          source_id?: string | null;
+          sugars_g?: number | null;
+          updated_at?: string;
+          updated_by?: string | null;
+          vitamin_b12_ug?: number | null;
+        };
+        Update: {
+          calcium_mg?: number | null;
+          calories_kcal?: number | null;
+          carbohydrate_g?: number | null;
+          energy_kj?: number | null;
+          fat_g?: number | null;
+          fibre_g?: number | null;
+          folate_ug?: number | null;
+          ingredient_id?: string;
+          iron_mg?: number | null;
+          magnesium_mg?: number | null;
+          potassium_mg?: number | null;
+          protein_g?: number | null;
+          saturated_fat_g?: number | null;
+          sodium_mg?: number | null;
+          source_detail?: string | null;
+          source_id?: string | null;
+          sugars_g?: number | null;
+          updated_at?: string;
+          updated_by?: string | null;
+          vitamin_b12_ug?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_nutrition_ingredient_id_fkey";
+            columns: ["ingredient_id"];
+            isOneToOne: true;
+            referencedRelation: "ingredients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ingredient_nutrition_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "nutrition_sources";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ingredient_nutrition_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ingredients: {
+        Row: {
+          allergens: string[];
+          alternative_names: string[];
+          brand: string | null;
+          created_at: string;
+          created_by: string;
+          food_category: string | null;
+          household_id: string | null;
+          id: string;
+          name: string;
+          notes: string | null;
+          state: string | null;
+          updated_at: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        ComputedFields: never;
+        Insert: {
+          allergens?: string[];
+          alternative_names?: string[];
+          brand?: string | null;
+          created_at?: string;
+          created_by: string;
+          food_category?: string | null;
+          household_id?: string | null;
+          id?: string;
+          name: string;
+          notes?: string | null;
+          state?: string | null;
+          updated_at?: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Update: {
+          allergens?: string[];
+          alternative_names?: string[];
+          brand?: string | null;
+          created_at?: string;
+          created_by?: string;
+          food_category?: string | null;
+          household_id?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string | null;
+          state?: string | null;
+          updated_at?: string;
+          visibility?: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ingredients_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ingredients_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      nutrition_sources: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          url: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          url?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          url?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -355,6 +566,7 @@ export type Database = {
           brand: string | null;
           created_at: string;
           id: string;
+          ingredient_id: string | null;
           ingredient_name: string;
           nutrition_override: Json | null;
           position: number;
@@ -368,6 +580,7 @@ export type Database = {
           brand?: string | null;
           created_at?: string;
           id?: string;
+          ingredient_id?: string | null;
           ingredient_name: string;
           nutrition_override?: Json | null;
           position?: number;
@@ -380,6 +593,7 @@ export type Database = {
           brand?: string | null;
           created_at?: string;
           id?: string;
+          ingredient_id?: string | null;
           ingredient_name?: string;
           nutrition_override?: Json | null;
           position?: number;
@@ -389,6 +603,13 @@ export type Database = {
           unit?: Database["public"]["Enums"]["measurement_unit"] | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_ingredient_id_fkey";
+            columns: ["ingredient_id"];
+            isOneToOne: false;
+            referencedRelation: "ingredients";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "recipe_ingredients_recipe_id_fkey";
             columns: ["recipe_id"];
@@ -610,7 +831,9 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       archive_household: { Args: { p_household_id: string }; Returns: undefined };
+      can_edit_ingredient: { Args: { p_ingredient_id: string }; Returns: boolean };
       can_edit_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
+      can_view_ingredient: { Args: { p_ingredient_id: string }; Returns: boolean };
       can_view_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
       change_member_role: {
         Args: {
@@ -621,6 +844,10 @@ export type Database = {
         Returns: undefined;
       };
       create_household: { Args: { p_name: string }; Returns: string };
+      create_ingredient: {
+        Args: { p_conversions: Json; p_ingredient: Json; p_nutrition: Json };
+        Returns: string;
+      };
       create_invitation: {
         Args: {
           p_email: string;
@@ -688,6 +915,15 @@ export type Database = {
       soft_delete_recipe: { Args: { p_recipe_id: string }; Returns: undefined };
       transfer_household_ownership: {
         Args: { p_household_id: string; p_new_owner_user_id: string };
+        Returns: undefined;
+      };
+      update_ingredient: {
+        Args: {
+          p_conversions: Json;
+          p_ingredient: Json;
+          p_ingredient_id: string;
+          p_nutrition: Json;
+        };
         Returns: undefined;
       };
       update_recipe: {

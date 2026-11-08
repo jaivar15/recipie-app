@@ -32,6 +32,7 @@ function toRpcPayload(values: RecipeFormValues) {
     },
     ingredients: values.ingredients.map((i) => ({
       ingredient_name: i.ingredient_name,
+      ingredient_id: i.ingredient_id ?? "",
       quantity: i.quantity ?? "",
       unit: i.unit ?? "",
       preparation_note: i.preparation_note ?? "",

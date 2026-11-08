@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { IngredientAutocomplete } from "@/components/recipes/ingredient-autocomplete";
 
 type HouseholdOption = { id: string; name: string };
 
@@ -328,9 +329,14 @@ export function RecipeForm({
             <div key={field.id} className="flex items-start gap-2 rounded-lg border p-3">
               <GripVertical className="mt-2.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_90px_100px_1fr]">
-                <Input
-                  placeholder="Ingredient"
-                  {...form.register(`ingredients.${index}.ingredient_name` as const)}
+                <IngredientAutocomplete
+                  value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
+                  linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
+                  householdId={visibility === "household" ? (form.watch("household_id") ?? null) : null}
+                  onChange={(name, id) => {
+                    form.setValue(`ingredients.${index}.ingredient_name`, name);
+                    form.setValue(`ingredients.${index}.ingredient_id`, id);
+                  }}
                 />
                 <Input
                   type="number"

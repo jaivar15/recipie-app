@@ -10,7 +10,7 @@ import {
 import { getHouseholdContext } from "@/lib/households/context";
 import { createClient } from "@/lib/supabase/server";
 import { signRecipeImageUrls } from "@/lib/supabase/storage";
-import { UNIT_LABELS } from "@/lib/validations/recipe";
+import { calculateRecipeNutrition, type RecipeIngredientForCalc, type NutrientSet } from "@/lib/nutrition/calculate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,8 @@ import { DuplicateRecipeDialog } from "@/components/recipes/duplicate-recipe-dia
 import { PersonalNoteCard } from "@/components/recipes/personal-note-card";
 import { ImageUpload } from "@/components/recipes/image-upload";
 import { RecipeImageGallery, type RecipeImageItem } from "@/components/recipes/recipe-image-gallery";
+import { ServingScaler, type ScalableIngredient } from "@/components/recipes/serving-scaler";
+import { NutritionCard } from "@/components/nutrition/nutrition-card";
 
 export default async function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,7 +40,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
        equipment, created_at, updated_at,
        creator:profiles!recipes_created_by_fkey(display_name, avatar_url),
        editor:profiles!recipes_last_edited_by_fkey(display_name),
-       recipe_ingredients(id, position, ingredient_name, quantity, unit, preparation_note, brand),
+       recipe_ingredients(id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id, nutrition_override,
+         ingredients(ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
+           fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
+           ingredient_measurement_conversions(unit, grams_per_unit))),
        recipe_steps(id, position, instruction, duration_minutes, temperature_celsius, equipment, tip),
        recipe_images(id, storage_path, is_primary, caption, position)`
     )
@@ -74,6 +79,31 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
   const ingredients = [...recipe.recipe_ingredients].sort((a, b) => a.position - b.position);
   const steps = [...recipe.recipe_steps].sort((a, b) => a.position - b.position);
+
+  const scalableIngredients: ScalableIngredient[] = ingredients.map((ing) => ({
+    id: ing.id,
+    name: ing.ingredient_name,
+    quantity: ing.quantity,
+    unit: ing.unit,
+    preparationNote: ing.preparation_note,
+    brand: ing.brand,
+  }));
+
+  const nutritionInputs: RecipeIngredientForCalc[] = ingredients.map((ing) => {
+    const conversions = Object.fromEntries(
+      (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+    );
+    return {
+      id: ing.id,
+      ingredientName: ing.ingredient_name,
+      quantity: ing.quantity,
+      unit: ing.unit,
+      nutritionOverride: (ing.nutrition_override as NutrientSet | null) ?? null,
+      ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+      conversions,
+    };
+  });
+  const nutritionResult = calculateRecipeNutrition(nutritionInputs);
   const images: RecipeImageItem[] = [...recipe.recipe_images]
     .sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.position - b.position)
     .map((img) => ({
@@ -146,27 +176,19 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Ingredients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2 text-sm">
-              {ingredients.map((ing) => (
-                <li key={ing.id} className="flex items-baseline gap-2">
-                  <span className="font-medium tabular-nums">
-                    {ing.quantity ? `${ing.quantity}${ing.unit ? UNIT_LABELS[ing.unit] : ""}` : ""}
-                  </span>
-                  <span>
-                    {ing.ingredient_name}
-                    {ing.preparation_note ? `, ${ing.preparation_note}` : ""}
-                    {ing.brand ? ` (${ing.brand})` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="space-y-6 lg:col-span-2">
+          <ServingScaler
+            originalServings={recipe.servings}
+            servingSize={recipe.serving_size}
+            ingredients={scalableIngredients}
+          />
+          <NutritionCard
+            recipeTotals={nutritionResult.nutrients}
+            servings={recipe.servings}
+            finishedWeightGrams={recipe.finished_weight_grams}
+            unresolvedIngredientNames={nutritionResult.unresolvedIngredientNames}
+          />
+        </div>
 
         <Card className="lg:col-span-3">
           <CardHeader>
