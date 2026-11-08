@@ -4,7 +4,9 @@ import {
   Check,
   Clock,
   Flame,
+  History,
   Pencil,
+  Printer,
   Scale,
   Users as UsersIcon,
 } from "lucide-react";
@@ -25,6 +27,7 @@ import { ImageUpload } from "@/components/recipes/image-upload";
 import { RecipeImageGallery, type RecipeImageItem } from "@/components/recipes/recipe-image-gallery";
 import { ServingScaler, type ScalableIngredient } from "@/components/recipes/serving-scaler";
 import { NutritionCard } from "@/components/nutrition/nutrition-card";
+import { ExportRecipeMenu } from "@/components/recipes/export-recipe-menu";
 
 export default async function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -163,6 +166,17 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
           ) : null}
           <AddToCollectionDialog recipeId={recipe.id} collections={collectionOptions} />
           <DuplicateRecipeDialog recipeId={recipe.id} households={editableHouseholds} />
+          {canEdit ? (
+            <Button render={<Link href={`/recipes/${recipe.id}/history`} />} variant="outline">
+              <History className="h-4 w-4" />
+              History
+            </Button>
+          ) : null}
+          <Button render={<a href={`/recipes/${recipe.id}/print`} target="_blank" rel="noopener" />} variant="outline">
+            <Printer className="h-4 w-4" />
+            Print / PDF
+          </Button>
+          <ExportRecipeMenu recipeId={recipe.id} />
           {canDelete ? <DeleteRecipeButton recipeId={recipe.id} title={recipe.title} /> : null}
         </div>
       </div>

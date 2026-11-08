@@ -1,6 +1,8 @@
+import { Download } from "lucide-react";
 import { getHouseholdContext } from "@/lib/households/context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { HouseholdSettingsForm } from "@/components/settings/household-settings-form";
 import { createClient } from "@/lib/supabase/server";
@@ -29,9 +31,7 @@ export default async function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           {ctx.activeHousehold ? <TabsTrigger value="household">Household</TabsTrigger> : null}
-          <TabsTrigger value="export" disabled>
-            Data export
-          </TabsTrigger>
+          {ctx.activeHousehold ? <TabsTrigger value="export">Data export</TabsTrigger> : null}
         </TabsList>
 
         <TabsContent value="profile">
@@ -69,6 +69,30 @@ export default async function SettingsPage() {
                   <p className="text-sm text-muted-foreground">
                     Ask the household owner to make changes here.
                   </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
+
+        {ctx.activeHousehold ? (
+          <TabsContent value="export">
+            <Card>
+              <CardHeader>
+                <CardTitle>Household backup</CardTitle>
+                <CardDescription>
+                  Download every household recipe, tag and collection as a single JSON file — useful for backups or
+                  moving to another system.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isOwner ? (
+                  <Button render={<a href="/settings/export" />}>
+                    <Download className="h-4 w-4" />
+                    Download household backup
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Only the household owner can export a full backup.</p>
                 )}
               </CardContent>
             </Card>

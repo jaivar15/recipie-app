@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { recipeFormSchema, type RecipeFormValues } from "@/lib/validations/recipe";
-import type { Database } from "@/lib/types/database";
+import type { Database, Json } from "@/lib/types/database";
 
 type RecipeVisibility = Database["public"]["Enums"]["recipe_visibility"];
 
@@ -81,6 +81,29 @@ export async function updateRecipeAction(recipeId: string, raw: RecipeFormValues
     p_steps: payload.steps,
   });
 
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/recipes");
+  revalidatePath(`/recipes/${recipeId}`);
+  redirect(`/recipes/${recipeId}`);
+}
+
+export async function restoreRecipeVersionAction(recipeId: string, versionId: string) {
+  const supabase = await createClient();
+  const { data: version, error: fetchError } = await supabase
+    .from("recipe_versions")
+    .select("snapshot")
+    .eq("id", versionId)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const snapshot = version.snapshot as { recipe: Json; ingredients: Json; steps: Json };
+  const { error } = await supabase.rpc("update_recipe", {
+    p_recipe_id: recipeId,
+    p_recipe: snapshot.recipe,
+    p_ingredients: snapshot.ingredients,
+    p_steps: snapshot.steps,
+  });
   if (error) throw new Error(error.message);
 
   revalidatePath("/recipes");

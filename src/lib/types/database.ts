@@ -969,6 +969,49 @@ export type Database = {
           },
         ];
       };
+      recipe_versions: {
+        Row: {
+          created_at: string;
+          edited_by: string | null;
+          id: string;
+          recipe_id: string;
+          snapshot: NonNullable<Json>;
+          version_number: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          edited_by?: string | null;
+          id?: string;
+          recipe_id: string;
+          snapshot: NonNullable<Json>;
+          version_number: number;
+        };
+        Update: {
+          created_at?: string;
+          edited_by?: string | null;
+          id?: string;
+          recipe_id?: string;
+          snapshot?: NonNullable<Json>;
+          version_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_versions_edited_by_fkey";
+            columns: ["edited_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipe_versions_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       recipes: {
         Row: {
           author_name: string | null;

@@ -212,7 +212,12 @@ export default async function RecipeLibraryPage({
             All household recipes, your private recipes, and favourites.
           </p>
         </div>
-        <Button render={<Link href="/recipes/new" />}>Add Recipe</Button>
+        <div className="flex gap-2">
+          <Button render={<Link href="/recipes/import" />} variant="outline">
+            Import
+          </Button>
+          <Button render={<Link href="/recipes/new" />}>Add Recipe</Button>
+        </div>
       </div>
 
       <RecipeSearchBar
