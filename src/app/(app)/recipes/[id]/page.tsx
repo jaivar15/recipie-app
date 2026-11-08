@@ -213,10 +213,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile icon={Clock} label="Prep" value={recipe.prep_time_minutes ? `${recipe.prep_time_minutes} min` : "—"} />
-        <StatTile icon={Flame} label="Cook" value={recipe.cook_time_minutes ? `${recipe.cook_time_minutes} min` : "—"} />
-        <StatTile icon={Clock} label="Total" value={totalTime ? `${totalTime} min` : "—"} />
-        <StatTile icon={UsersIcon} label="Servings" value={`${recipe.servings}${recipe.serving_size ? ` (${recipe.serving_size})` : ""}`} />
+        <StatTile icon={Clock} label="Prep" value={recipe.prep_time_minutes ? `${recipe.prep_time_minutes} min` : "—"} chip="bg-chart-2/20 text-chart-2" />
+        <StatTile icon={Flame} label="Cook" value={recipe.cook_time_minutes ? `${recipe.cook_time_minutes} min` : "—"} chip="bg-chart-3/20 text-chart-3" />
+        <StatTile icon={Clock} label="Total" value={totalTime ? `${totalTime} min` : "—"} chip="bg-chart-1/20 text-chart-1" />
+        <StatTile icon={UsersIcon} label="Servings" value={`${recipe.servings}${recipe.serving_size ? ` (${recipe.serving_size})` : ""}`} chip="bg-chart-5/20 text-chart-5" />
       </div>
 
       {images.length > 0 || canEdit ? (
@@ -249,7 +249,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
             <ol className="space-y-4">
               {steps.map((step, i) => (
                 <li key={step.id} className="flex gap-3 text-sm">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-chart-2/20 text-xs font-medium text-chart-2">
                     {i + 1}
                   </span>
                   <div className="space-y-1">
@@ -301,14 +301,18 @@ function StatTile({
   icon: Icon,
   label,
   value,
+  chip,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  chip: string;
 }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-card p-3">
-      <Icon className="h-4 w-4 text-muted-foreground" />
+      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${chip}`}>
+        <Icon className="h-4 w-4" />
+      </div>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm font-medium">{value}</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Beef, Droplet, Flame, Wheat } from "lucide-react";
 import {
   NUTRIENT_KEYS,
   NUTRIENT_LABELS,
@@ -16,20 +16,33 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 const HEADLINE_KEYS: NutrientKey[] = ["calories_kcal", "protein_g", "carbohydrate_g", "fat_g"];
 
+const HEADLINE_STYLE: Record<string, { icon: typeof Flame; card: string; chip: string }> = {
+  calories_kcal: { icon: Flame, card: "bg-chart-1/10", chip: "bg-chart-1/20 text-chart-1" },
+  protein_g: { icon: Beef, card: "bg-chart-3/10", chip: "bg-chart-3/20 text-chart-3" },
+  carbohydrate_g: { icon: Wheat, card: "bg-chart-2/10", chip: "bg-chart-2/20 text-chart-2" },
+  fat_g: { icon: Droplet, card: "bg-chart-5/10", chip: "bg-chart-5/20 text-chart-5" },
+};
+
 function NutrientGrid({ nutrients }: { nutrients: Record<NutrientKey, NutrientResult> }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        {HEADLINE_KEYS.map((key) => (
-          <div key={key} className="rounded-lg border bg-card p-3 text-center">
-            <p className="text-xl font-semibold tabular-nums">
-              {nutrients[key].value != null ? nutrients[key].value : "—"}
-              {!nutrients[key].complete && nutrients[key].value != null ? "+" : ""}
-            </p>
-            <p className="text-xs text-muted-foreground">{NUTRIENT_LABELS[key].label}</p>
-            <p className="text-xs text-muted-foreground">({NUTRIENT_LABELS[key].unit})</p>
-          </div>
-        ))}
+        {HEADLINE_KEYS.map((key) => {
+          const { icon: Icon, card, chip } = HEADLINE_STYLE[key];
+          return (
+            <div key={key} className={`space-y-2 rounded-lg border p-3 ${card}`}>
+              <div className={`flex h-7 w-7 items-center justify-center rounded-md ${chip}`}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <p className="text-xl font-semibold tabular-nums">
+                {nutrients[key].value != null ? nutrients[key].value : "—"}
+                {!nutrients[key].complete && nutrients[key].value != null ? "+" : ""}
+                <span className="ml-1 text-xs font-normal text-muted-foreground">{NUTRIENT_LABELS[key].unit}</span>
+              </p>
+              <p className="text-xs font-medium text-muted-foreground">{NUTRIENT_LABELS[key].label}</p>
+            </div>
+          );
+        })}
       </div>
       <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 text-sm">
         {NUTRIENT_KEYS.filter((k) => !HEADLINE_KEYS.includes(k)).map((key) => {
