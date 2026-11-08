@@ -198,7 +198,7 @@ export default async function MealPlannerPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="space-y-3">
         {days.map((day) => {
           const dateISO = toISODate(day);
           const dayLabel = day.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
@@ -216,8 +216,11 @@ export default async function MealPlannerPage({
           const dayHasNutrition = dayTotals.some((t) => t.known);
 
           return (
-            <div key={dateISO} className={`space-y-2 rounded-lg border p-3 ${isToday ? "border-primary/40 bg-primary/5" : ""}`}>
-              <div className="flex items-center justify-between">
+            <div
+              key={dateISO}
+              className={`flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-start ${isToday ? "border-primary/40 bg-primary/5" : ""}`}
+            >
+              <div className="flex items-center justify-between gap-2 md:w-36 md:shrink-0 md:flex-col md:items-start">
                 <p className="text-sm font-medium">{dayLabel}</p>
                 {canEdit ? (
                   <AddMealEntryDialog
@@ -229,51 +232,59 @@ export default async function MealPlannerPage({
                   />
                 ) : null}
               </div>
-              <div className="space-y-2">
+
+              <div className="flex flex-1 flex-wrap gap-3">
                 {MEAL_ORDER.filter((mt) => dayEntries.some((e) => e.mealType === mt)).map((mt) => (
-                  <div key={mt} className="space-y-1">
+                  <div key={mt} className="w-40 shrink-0 space-y-1">
                     <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
                       {MEAL_LABELS[mt]}
                     </p>
-                    {dayEntries
-                      .filter((e) => e.mealType === mt)
-                      .map((e) => (
-                        <MealEntryCard
-                          key={e.id}
-                          id={e.id}
-                          title={e.title}
-                          recipeId={e.recipeId}
-                          servings={e.servings}
-                          memberNames={e.memberNames}
-                          macros={e.macros}
-                          canEdit={canEdit}
-                        />
-                      ))}
+                    <div className="space-y-1">
+                      {dayEntries
+                        .filter((e) => e.mealType === mt)
+                        .map((e) => (
+                          <MealEntryCard
+                            key={e.id}
+                            id={e.id}
+                            title={e.title}
+                            recipeId={e.recipeId}
+                            servings={e.servings}
+                            memberNames={e.memberNames}
+                            macros={e.macros}
+                            canEdit={canEdit}
+                          />
+                        ))}
+                    </div>
                   </div>
                 ))}
-                {dayEntries.length === 0 ? <p className="text-xs text-muted-foreground">Nothing planned</p> : null}
+                {dayEntries.length === 0 ? (
+                  <p className="self-center text-xs text-muted-foreground">Nothing planned</p>
+                ) : null}
               </div>
+
               {dayHasNutrition ? (
-                <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
+                <div className="flex shrink-0 flex-col gap-1.5 rounded-md bg-muted/40 p-2 md:w-56">
                   <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Day total</p>
-                  {dayCalories.known ? (
-                    <p className="font-semibold tabular-nums">
-                      {Math.round(dayCalories.value).toLocaleString()}
-                      {dayCalories.complete ? "" : "+"}
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">kcal</span>
-                    </p>
-                  ) : null}
-                  {dayMacroBadges.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {dayMacroBadges.map((t) => (
-                        <Badge key={t.key} variant="outline" className="font-normal tabular-nums">
-                          {SHORT_MACRO_LABELS[t.key]} {Math.round(t.value).toLocaleString()}
-                          {t.complete ? "" : "+"}
-                          {t.unit}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    {dayCalories.known ? (
+                      <p className="font-semibold tabular-nums">
+                        {Math.round(dayCalories.value).toLocaleString()}
+                        {dayCalories.complete ? "" : "+"}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">kcal</span>
+                      </p>
+                    ) : null}
+                    {dayMacroBadges.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {dayMacroBadges.map((t) => (
+                          <Badge key={t.key} variant="outline" className="font-normal tabular-nums">
+                            {SHORT_MACRO_LABELS[t.key]} {Math.round(t.value).toLocaleString()}
+                            {t.complete ? "" : "+"}
+                            {t.unit}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </div>
