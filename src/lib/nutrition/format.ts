@@ -36,3 +36,13 @@ export function scaleQuantity(original: number, originalServings: number, target
   if (originalServings <= 0) return original;
   return (original * targetServings) / originalServings;
 }
+
+/**
+ * Formats a nutrient value for display, appending "+" when the
+ * contributing ingredients only produced a lower bound rather than an
+ * exact figure. Returns null (never "0") when the value is unknown.
+ */
+export function formatMacroValue(value: number | null, complete: boolean): string | null {
+  if (value == null) return null;
+  return `${Math.round(value).toLocaleString()}${complete ? "" : "+"}`;
+}

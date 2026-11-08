@@ -39,6 +39,10 @@ export const NUTRIENT_LABELS: Record<NutrientKey, { label: string; unit: string 
   folate_ug: { label: "Folate", unit: "µg" },
 };
 
+/** The five macros shown in compact nutrition summaries (meal planner, etc). */
+export const MACRO_KEYS = ["calories_kcal", "protein_g", "carbohydrate_g", "fat_g", "fibre_g"] as const;
+export type MacroKey = (typeof MACRO_KEYS)[number];
+
 export type NutrientSet = Partial<Record<NutrientKey, number | null>>;
 
 export interface RecipeIngredientForCalc {
@@ -66,6 +70,11 @@ export interface RecipeNutritionTotals {
   /** Ingredient lines that couldn't be resolved to a gram amount at all (missing quantity, unit, or conversion). */
   unresolvedIngredientNames: string[];
 }
+
+export type Macros = Record<MacroKey, NutrientResult>;
+export const EMPTY_MACROS: Macros = Object.fromEntries(
+  MACRO_KEYS.map((k) => [k, { value: null, complete: false }])
+) as Macros;
 
 /**
  * Converts a quantity+unit to grams for one ingredient line. Returns null

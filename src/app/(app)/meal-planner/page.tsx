@@ -2,7 +2,16 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { getHouseholdContext } from "@/lib/households/context";
 import { createClient } from "@/lib/supabase/server";
-import { calculateRecipeNutrition, multiplyNutrients, type NutrientSet, type RecipeIngredientForCalc } from "@/lib/nutrition/calculate";
+import {
+  calculateRecipeNutrition,
+  multiplyNutrients,
+  EMPTY_MACROS,
+  MACRO_KEYS,
+  NUTRIENT_LABELS,
+  type Macros,
+  type NutrientSet,
+  type RecipeIngredientForCalc,
+} from "@/lib/nutrition/calculate";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { AddMealEntryDialog } from "@/components/meal-planner/add-meal-entry-dialog";
@@ -18,6 +27,7 @@ const MEAL_LABELS: Record<MealType, string> = {
   dinner: "Dinner",
   snack: "Snack",
 };
+
 
 function mondayOf(d: Date): Date {
   const date = new Date(d);
@@ -98,10 +108,7 @@ export default async function MealPlannerPage({
     title: string;
     recipeId: string | null;
     memberNames: string[];
-    kcal: number | null;
-    kcalComplete: boolean;
-    proteinG: number | null;
-    proteinComplete: boolean;
+    macros: Macros;
   };
 
   const entriesByDay = new Map<string, DayEntry[]>();
@@ -112,7 +119,7 @@ export default async function MealPlannerPage({
       .select(
         `id, entry_date, meal_type, servings, custom_title, recipe_id,
          recipes(title, servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
-           ingredients(ingredient_nutrition(calories_kcal, protein_g),
+           ingredients(ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
              ingredient_measurement_conversions(unit, grams_per_unit)))),
          meal_plan_member_portions(user_id, profiles!meal_plan_member_portions_user_id_fkey(display_name))`
       )
@@ -121,10 +128,7 @@ export default async function MealPlannerPage({
       .order("meal_type");
 
     for (const e of entries ?? []) {
-      let kcal: number | null = null;
-      let kcalComplete = false;
-      let proteinG: number | null = null;
-      let proteinComplete = false;
+      let macros: Macros = EMPTY_MACROS;
 
       if (e.recipes) {
         const inputs: RecipeIngredientForCalc[] = e.recipes.recipe_ingredients.map((ing) => ({
@@ -141,10 +145,7 @@ export default async function MealPlannerPage({
         const totals = calculateRecipeNutrition(inputs).nutrients;
         const factor = e.recipes.servings > 0 ? Number(e.servings) / e.recipes.servings : 0;
         const scaled = multiplyNutrients(totals, factor);
-        kcal = scaled.calories_kcal.value;
-        kcalComplete = scaled.calories_kcal.complete;
-        proteinG = scaled.protein_g.value;
-        proteinComplete = scaled.protein_g.complete;
+        macros = Object.fromEntries(MACRO_KEYS.map((k) => [k, scaled[k]])) as Macros;
       }
 
       const list = entriesByDay.get(e.entry_date) ?? [];
@@ -155,10 +156,7 @@ export default async function MealPlannerPage({
         title: e.recipes?.title ?? e.custom_title ?? "Meal",
         recipeId: e.recipe_id,
         memberNames: (e.meal_plan_member_portions ?? []).map((p) => p.profiles?.display_name || "Member"),
-        kcal,
-        kcalComplete,
-        proteinG,
-        proteinComplete,
+        macros,
       });
       entriesByDay.set(e.entry_date, list);
     }
@@ -198,9 +196,14 @@ export default async function MealPlannerPage({
           const dayLabel = day.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
           const dayEntries = entriesByDay.get(dateISO) ?? [];
           const isToday = dateISO === toISODate(new Date());
-          const dayKcal = dayEntries.reduce((sum, e) => sum + (e.kcal ?? 0), 0);
-          const dayKcalKnown = dayEntries.some((e) => e.kcal != null);
-          const dayKcalComplete = dayEntries.every((e) => e.kcal != null && e.kcalComplete);
+          const dayTotals = MACRO_KEYS.map((key) => ({
+            key,
+            ...NUTRIENT_LABELS[key],
+            value: dayEntries.reduce((sum, e) => sum + (e.macros[key].value ?? 0), 0),
+            known: dayEntries.some((e) => e.macros[key].value != null),
+            complete: dayEntries.every((e) => e.macros[key].value != null && e.macros[key].complete),
+          }));
+          const dayHasNutrition = dayTotals.some((t) => t.known);
 
           return (
             <div key={dateISO} className={`space-y-2 rounded-lg border p-3 ${isToday ? "border-primary/40 bg-primary/5" : ""}`}>
@@ -232,10 +235,7 @@ export default async function MealPlannerPage({
                           recipeId={e.recipeId}
                           servings={e.servings}
                           memberNames={e.memberNames}
-                          kcal={e.kcal}
-                          kcalComplete={e.kcalComplete}
-                          proteinG={e.proteinG}
-                          proteinComplete={e.proteinComplete}
+                          macros={e.macros}
                           canEdit={canEdit}
                         />
                       ))}
@@ -243,11 +243,23 @@ export default async function MealPlannerPage({
                 ))}
                 {dayEntries.length === 0 ? <p className="text-xs text-muted-foreground">Nothing planned</p> : null}
               </div>
-              {dayKcalKnown ? (
-                <p className="border-t pt-2 text-xs font-medium text-muted-foreground">
-                  Day total: {Math.round(dayKcal).toLocaleString()}
-                  {dayKcalComplete ? "" : "+"} kcal
-                </p>
+              {dayHasNutrition ? (
+                <div className="space-y-1 border-t pt-2">
+                  <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Day total</p>
+                  <div className="space-y-0.5 text-xs">
+                    {dayTotals.map((t) =>
+                      t.known ? (
+                        <div key={t.key} className="flex items-baseline justify-between gap-2">
+                          <span className="shrink-0 text-muted-foreground">{t.label}</span>
+                          <span className="truncate font-medium tabular-nums">
+                            {Math.round(t.value).toLocaleString()}
+                            {t.complete ? "" : "+"} {t.unit}
+                          </span>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
               ) : null}
             </div>
           );
