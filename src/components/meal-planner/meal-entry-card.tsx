@@ -6,14 +6,8 @@ import { X } from "lucide-react";
 import { deleteMealPlanEntryAction } from "@/app/(app)/meal-planner/actions";
 import { formatMacroValue } from "@/lib/nutrition/format";
 import type { Macros } from "@/lib/nutrition/calculate";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-const SECONDARY_MACROS: { key: keyof Macros; label: string }[] = [
-  { key: "protein_g", label: "P" },
-  { key: "carbohydrate_g", label: "C" },
-  { key: "fat_g", label: "F" },
-  { key: "fibre_g", label: "Fb" },
-];
 
 export function MealEntryCard({
   id,
@@ -35,22 +29,19 @@ export function MealEntryCard({
   const [isPending, startTransition] = useTransition();
 
   const kcal = formatMacroValue(macros.calories_kcal.value, macros.calories_kcal.complete);
-  const secondaryLine = SECONDARY_MACROS.map((m) => {
-    const formatted = formatMacroValue(macros[m.key].value, macros[m.key].complete);
-    return formatted ? `${m.label} ${formatted}g` : null;
-  })
-    .filter(Boolean)
-    .join(" · ");
 
   const content = (
-    <div className="space-y-0.5">
+    <div className="space-y-1">
       <p className="truncate text-sm font-medium">{title}</p>
       <p className="text-xs text-muted-foreground">
         {servings} serving{servings === 1 ? "" : "s"}
         {memberNames.length > 0 ? ` · ${memberNames.join(", ")}` : ""}
       </p>
-      {kcal != null ? <p className="text-xs font-medium text-foreground">{kcal} kcal</p> : null}
-      {secondaryLine ? <p className="text-[11px] text-muted-foreground">{secondaryLine}</p> : null}
+      {kcal != null ? (
+        <Badge variant="secondary" className="font-medium tabular-nums">
+          {kcal} kcal
+        </Badge>
+      ) : null}
     </div>
   );
 

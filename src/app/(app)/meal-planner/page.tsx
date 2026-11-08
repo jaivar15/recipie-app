@@ -13,6 +13,7 @@ import {
   type RecipeIngredientForCalc,
 } from "@/lib/nutrition/calculate";
 import { EmptyState } from "@/components/layout/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AddMealEntryDialog } from "@/components/meal-planner/add-meal-entry-dialog";
 import { MealEntryCard } from "@/components/meal-planner/meal-entry-card";
@@ -26,6 +27,13 @@ const MEAL_LABELS: Record<MealType, string> = {
   lunch: "Lunch",
   dinner: "Dinner",
   snack: "Snack",
+};
+const SHORT_MACRO_LABELS: Record<(typeof MACRO_KEYS)[number], string> = {
+  calories_kcal: "Cal",
+  protein_g: "P",
+  carbohydrate_g: "C",
+  fat_g: "F",
+  fibre_g: "Fb",
 };
 
 
@@ -203,6 +211,8 @@ export default async function MealPlannerPage({
             known: dayEntries.some((e) => e.macros[key].value != null),
             complete: dayEntries.every((e) => e.macros[key].value != null && e.macros[key].complete),
           }));
+          const dayCalories = dayTotals.find((t) => t.key === "calories_kcal")!;
+          const dayMacroBadges = dayTotals.filter((t) => t.key !== "calories_kcal" && t.known);
           const dayHasNutrition = dayTotals.some((t) => t.known);
 
           return (
@@ -244,21 +254,26 @@ export default async function MealPlannerPage({
                 {dayEntries.length === 0 ? <p className="text-xs text-muted-foreground">Nothing planned</p> : null}
               </div>
               {dayHasNutrition ? (
-                <div className="space-y-1 border-t pt-2">
+                <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
                   <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Day total</p>
-                  <div className="space-y-0.5 text-xs">
-                    {dayTotals.map((t) =>
-                      t.known ? (
-                        <div key={t.key} className="flex items-baseline justify-between gap-2">
-                          <span className="shrink-0 text-muted-foreground">{t.label}</span>
-                          <span className="truncate font-medium tabular-nums">
-                            {Math.round(t.value).toLocaleString()}
-                            {t.complete ? "" : "+"} {t.unit}
-                          </span>
-                        </div>
-                      ) : null
-                    )}
-                  </div>
+                  {dayCalories.known ? (
+                    <p className="font-semibold tabular-nums">
+                      {Math.round(dayCalories.value).toLocaleString()}
+                      {dayCalories.complete ? "" : "+"}
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">kcal</span>
+                    </p>
+                  ) : null}
+                  {dayMacroBadges.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {dayMacroBadges.map((t) => (
+                        <Badge key={t.key} variant="outline" className="font-normal tabular-nums">
+                          {SHORT_MACRO_LABELS[t.key]} {Math.round(t.value).toLocaleString()}
+                          {t.complete ? "" : "+"}
+                          {t.unit}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
