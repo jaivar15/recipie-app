@@ -13,6 +13,7 @@ import {
   CUISINES,
   COOKING_METHODS,
   MEAL_TYPES,
+  DIETARY_LABELS,
   DIFFICULTIES,
 } from "@/lib/validations/recipe";
 import { Button } from "@/components/ui/button";
@@ -36,11 +37,13 @@ type HouseholdOption = { id: string; name: string };
 export function RecipeForm({
   defaultValues,
   households,
+  availableTags,
   submitLabel,
   onSubmit,
 }: {
   defaultValues: Partial<RecipeFormInput>;
   households: HouseholdOption[];
+  availableTags: { id: string; name: string }[];
   submitLabel: string;
   onSubmit: (values: RecipeFormValues) => Promise<void>;
 }) {
@@ -56,6 +59,9 @@ export function RecipeForm({
       servings: 4,
       meal_type: [],
       equipment: [],
+      dietary_labels: [],
+      dietary_labels_verified: [],
+      tag_ids: [],
       ingredients: [{ ingredient_name: "" }],
       steps: [{ instruction: "" }],
       ...defaultValues,
@@ -68,6 +74,9 @@ export function RecipeForm({
   const visibility = form.watch("visibility");
   const equipmentValue = form.watch("equipment");
   const mealTypeValue = form.watch("meal_type");
+  const dietaryLabelsValue = form.watch("dietary_labels");
+  const dietaryVerifiedValue = form.watch("dietary_labels_verified");
+  const tagIdsValue = form.watch("tag_ids");
 
   function handleSubmit(values: RecipeFormValues) {
     setSubmitError(null);
@@ -316,6 +325,83 @@ export function RecipeForm({
               }
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Categories</CardTitle>
+          <CardDescription>
+            Applying a dietary label here doesn&apos;t make it verified — tick &quot;verified&quot; once you&apos;ve
+            confirmed it (e.g. checked every ingredient and ruled out cross-contact).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Dietary labels</Label>
+            <div className="space-y-1.5">
+              {DIETARY_LABELS.map((label) => {
+                const applied = dietaryLabelsValue?.includes(label);
+                const verified = dietaryVerifiedValue?.includes(label);
+                return (
+                  <div key={label} className="flex items-center gap-4 text-sm">
+                    <label className="flex w-40 items-center gap-2">
+                      <Checkbox
+                        checked={applied}
+                        onCheckedChange={(checked) => {
+                          const current = form.getValues("dietary_labels") ?? [];
+                          const next = checked ? [...current, label] : current.filter((x) => x !== label);
+                          form.setValue("dietary_labels", next);
+                          if (!checked) {
+                            form.setValue(
+                              "dietary_labels_verified",
+                              (form.getValues("dietary_labels_verified") ?? []).filter((x) => x !== label)
+                            );
+                          }
+                        }}
+                      />
+                      {label}
+                    </label>
+                    {applied ? (
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={verified}
+                          onCheckedChange={(checked) => {
+                            const current = form.getValues("dietary_labels_verified") ?? [];
+                            form.setValue(
+                              "dietary_labels_verified",
+                              checked ? [...current, label] : current.filter((x) => x !== label)
+                            );
+                          }}
+                        />
+                        Verified
+                      </label>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {availableTags.length > 0 ? (
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {availableTags.map((tag) => (
+                  <label key={tag.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={tagIdsValue?.includes(tag.id)}
+                      onCheckedChange={(checked) => {
+                        const current = form.getValues("tag_ids") ?? [];
+                        form.setValue("tag_ids", checked ? [...current, tag.id] : current.filter((x) => x !== tag.id));
+                      }}
+                    />
+                    {tag.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

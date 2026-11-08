@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  Check,
   Clock,
   Flame,
   Pencil,
@@ -18,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { FavouriteButton } from "@/components/recipes/favourite-button";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { DuplicateRecipeDialog } from "@/components/recipes/duplicate-recipe-dialog";
+import { AddToCollectionDialog } from "@/components/categories/add-to-collection-dialog";
 import { PersonalNoteCard } from "@/components/recipes/personal-note-card";
 import { ImageUpload } from "@/components/recipes/image-upload";
 import { RecipeImageGallery, type RecipeImageItem } from "@/components/recipes/recipe-image-gallery";
@@ -37,7 +39,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       `id, household_id, visibility, created_by, last_edited_by, original_author_id, title, description,
        source, source_url, author_name, prep_time_minutes, cook_time_minutes, resting_time_minutes,
        servings, serving_size, finished_weight_grams, difficulty, cuisine, meal_type, cooking_method,
-       equipment, created_at, updated_at,
+       equipment, dietary_labels, dietary_labels_verified, created_at, updated_at,
        creator:profiles!recipes_created_by_fkey(display_name, avatar_url),
        editor:profiles!recipes_last_edited_by_fkey(display_name),
        recipe_ingredients(id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id, nutrition_override,
@@ -45,14 +47,15 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
            fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
            ingredient_measurement_conversions(unit, grams_per_unit))),
        recipe_steps(id, position, instruction, duration_minutes, temperature_celsius, equipment, tip),
-       recipe_images(id, storage_path, is_primary, caption, position)`
+       recipe_images(id, storage_path, is_primary, caption, position),
+       recipe_tags(tags(id, name))`
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!recipe) notFound();
 
-  const [{ data: favourite }, { data: note }, imageUrlMap] = await Promise.all([
+  const [{ data: favourite }, { data: note }, { data: collectionRows }, imageUrlMap] = await Promise.all([
     supabase.from("recipe_favourites").select("id").eq("recipe_id", id).eq("user_id", ctx.userId).maybeSingle(),
     supabase
       .from("recipe_personal_notes")
@@ -60,8 +63,21 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       .eq("recipe_id", id)
       .eq("user_id", ctx.userId)
       .maybeSingle(),
+    ctx.activeHousehold
+      ? supabase
+          .from("collections")
+          .select("id, name, collection_recipes(recipe_id)")
+          .or(`visibility.eq.personal,household_id.eq.${ctx.activeHousehold.householdId}`)
+          .order("name")
+      : supabase.from("collections").select("id, name, collection_recipes(recipe_id)").eq("visibility", "personal").order("name"),
     signRecipeImageUrls(recipe.recipe_images.map((i) => i.storage_path)),
   ]);
+
+  const collectionOptions = (collectionRows ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    inCollection: c.collection_recipes.some((cr) => cr.recipe_id === id),
+  }));
 
   const householdRole = recipe.household_id
     ? ctx.households.find((h) => h.householdId === recipe.household_id)?.role
@@ -145,6 +161,7 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
               Edit
             </Button>
           ) : null}
+          <AddToCollectionDialog recipeId={recipe.id} collections={collectionOptions} />
           <DuplicateRecipeDialog recipeId={recipe.id} households={editableHouseholds} />
           {canDelete ? <DeleteRecipeButton recipeId={recipe.id} title={recipe.title} /> : null}
         </div>
@@ -159,6 +176,26 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
             {mt}
           </Badge>
         ))}
+        {recipe.dietary_labels.map((label) => {
+          const verified = recipe.dietary_labels_verified.includes(label);
+          return (
+            <Badge
+              key={label}
+              variant={verified ? "default" : "secondary"}
+              title={verified ? "Verified" : "Applied, not yet verified"}
+            >
+              {verified ? <Check className="h-3 w-3" /> : null}
+              {label}
+            </Badge>
+          );
+        })}
+        {recipe.recipe_tags.map((rt) =>
+          rt.tags ? (
+            <Badge key={rt.tags.id} variant="outline">
+              #{rt.tags.name}
+            </Badge>
+          ) : null
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

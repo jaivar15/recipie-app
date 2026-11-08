@@ -17,8 +17,10 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
       `id, household_id, visibility, created_by, title, description, source, source_url, author_name,
        prep_time_minutes, cook_time_minutes, resting_time_minutes, servings, serving_size,
        finished_weight_grams, difficulty, cuisine, meal_type, cooking_method, equipment,
-       recipe_ingredients(ingredient_name, quantity, unit, preparation_note, brand, position),
-       recipe_steps(instruction, duration_minutes, temperature_celsius, equipment, tip, position)`
+       dietary_labels, dietary_labels_verified,
+       recipe_ingredients(ingredient_name, quantity, unit, preparation_note, brand, position, ingredient_id),
+       recipe_steps(instruction, duration_minutes, temperature_celsius, equipment, tip, position),
+       recipe_tags(tag_id)`
     )
     .eq("id", id)
     .maybeSingle();
@@ -39,6 +41,14 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
     .filter((h) => h.role === "owner" || h.role === "editor")
     .map((h) => ({ id: h.householdId, name: h.householdName }));
 
+  const { data: tags } = recipe.household_id
+    ? await supabase
+        .from("tags")
+        .select("id, name")
+        .or(`visibility.eq.personal,household_id.eq.${recipe.household_id}`)
+        .order("name")
+    : await supabase.from("tags").select("id, name").eq("visibility", "personal").order("name");
+
   const defaultValues: Partial<RecipeFormValues> = {
     visibility: recipe.visibility,
     household_id: recipe.household_id,
@@ -58,10 +68,14 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
     meal_type: recipe.meal_type,
     cooking_method: recipe.cooking_method ?? "",
     equipment: recipe.equipment,
+    dietary_labels: recipe.dietary_labels,
+    dietary_labels_verified: recipe.dietary_labels_verified,
+    tag_ids: recipe.recipe_tags.map((t) => t.tag_id),
     ingredients: [...recipe.recipe_ingredients]
       .sort((a, b) => a.position - b.position)
       .map((i) => ({
         ingredient_name: i.ingredient_name,
+        ingredient_id: i.ingredient_id,
         quantity: i.quantity ?? undefined,
         unit: i.unit ?? undefined,
         preparation_note: i.preparation_note ?? "",
@@ -91,6 +105,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
       <RecipeForm
         defaultValues={defaultValues}
         households={editableHouseholds}
+        availableTags={tags ?? []}
         submitLabel="Save changes"
         onSubmit={handleUpdate}
       />

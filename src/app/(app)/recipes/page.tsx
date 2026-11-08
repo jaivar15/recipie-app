@@ -3,14 +3,26 @@ import { BookOpen } from "lucide-react";
 import { getHouseholdContext } from "@/lib/households/context";
 import { createClient } from "@/lib/supabase/server";
 import { signRecipeImageUrls } from "@/lib/supabase/storage";
+import { calculateRecipeNutrition, divideNutrients, type RecipeIngredientForCalc, type NutrientSet } from "@/lib/nutrition/calculate";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RecipeCard, type RecipeCardData } from "@/components/recipes/recipe-card";
 import { RestoreRecipeButton } from "@/components/recipes/restore-recipe-button";
+import { RecipeSearchBar } from "@/components/recipes/recipe-search-bar";
+import type { Database } from "@/lib/types/database";
 
-const RECIPE_CARD_FIELDS =
-  "id, title, visibility, difficulty, cuisine, prep_time_minutes, cook_time_minutes, servings, author_name, deleted_at, recipe_images(storage_path, is_primary)";
+type MeasurementUnit = Database["public"]["Enums"]["measurement_unit"];
+
+const RECIPE_CARD_FIELDS = `
+  id, title, visibility, difficulty, cuisine, prep_time_minutes, cook_time_minutes, servings, author_name,
+  dietary_labels, deleted_at, recipe_images(storage_path, is_primary),
+  recipe_tags(tag_id),
+  recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
+    ingredients(ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
+      fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
+      ingredient_measurement_conversions(unit, grams_per_unit)))
+`;
 
 type RawRecipeRow = {
   id: string;
@@ -22,9 +34,68 @@ type RawRecipeRow = {
   cook_time_minutes: number | null;
   servings: number;
   author_name: string | null;
+  dietary_labels: string[];
   deleted_at: string | null;
   recipe_images: { storage_path: string; is_primary: boolean }[];
+  recipe_tags: { tag_id: string }[];
+  recipe_ingredients: {
+    ingredient_name: string;
+    quantity: number | null;
+    unit: MeasurementUnit | null;
+    nutrition_override: NutrientSet | null;
+    ingredients: {
+      ingredient_nutrition: NutrientSet | null;
+      ingredient_measurement_conversions: { unit: MeasurementUnit; grams_per_unit: number }[];
+    } | null;
+  }[];
 };
+
+type Filters = {
+  q?: string;
+  cuisine?: string;
+  difficulty?: string;
+  dietary?: string[];
+  maxTime?: number;
+  minProtein?: number;
+  maxCalories?: number;
+  tag?: string;
+};
+
+function matchesFilters(r: RawRecipeRow, filters: Filters): boolean {
+  if (filters.q) {
+    const q = filters.q.toLowerCase();
+    const titleMatch = r.title.toLowerCase().includes(q);
+    const ingredientMatch = r.recipe_ingredients.some((i) => i.ingredient_name.toLowerCase().includes(q));
+    if (!titleMatch && !ingredientMatch) return false;
+  }
+  if (filters.cuisine && r.cuisine !== filters.cuisine) return false;
+  if (filters.difficulty && r.difficulty !== filters.difficulty) return false;
+  if (filters.dietary && filters.dietary.length > 0) {
+    if (!filters.dietary.every((d) => r.dietary_labels.includes(d))) return false;
+  }
+  if (filters.tag && !r.recipe_tags.some((t) => t.tag_id === filters.tag)) return false;
+  if (filters.maxTime != null) {
+    const total = (r.prep_time_minutes ?? 0) + (r.cook_time_minutes ?? 0);
+    if (total === 0 || total > filters.maxTime) return false;
+  }
+  if (filters.minProtein != null || filters.maxCalories != null) {
+    const inputs: RecipeIngredientForCalc[] = r.recipe_ingredients.map((ing) => ({
+      id: ing.ingredient_name,
+      ingredientName: ing.ingredient_name,
+      quantity: ing.quantity,
+      unit: ing.unit,
+      nutritionOverride: ing.nutrition_override,
+      ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+      conversions: Object.fromEntries(
+        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+      ),
+    }));
+    const perServing = divideNutrients(calculateRecipeNutrition(inputs).nutrients, r.servings);
+    if (filters.minProtein != null && (perServing.protein_g.value ?? 0) < filters.minProtein) return false;
+    if (filters.maxCalories != null && (perServing.calories_kcal.value ?? Infinity) > filters.maxCalories) return false;
+  }
+  return true;
+}
 
 async function toCardData(rows: RawRecipeRow[]): Promise<RecipeCardData[]> {
   const primaryPaths = rows
@@ -49,13 +120,29 @@ async function toCardData(rows: RawRecipeRow[]): Promise<RecipeCardData[]> {
   });
 }
 
-export default async function RecipeLibraryPage() {
+export default async function RecipeLibraryPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const ctx = await getHouseholdContext();
   if (!ctx) return null;
 
+  const sp = await searchParams;
+  const filters: Filters = {
+    q: sp.q,
+    cuisine: sp.cuisine,
+    difficulty: sp.difficulty,
+    dietary: sp.dietary?.split(",").filter(Boolean),
+    maxTime: sp.maxTime ? Number(sp.maxTime) : undefined,
+    minProtein: sp.minProtein ? Number(sp.minProtein) : undefined,
+    maxCalories: sp.maxCalories ? Number(sp.maxCalories) : undefined,
+    tag: sp.tag,
+  };
+
   const supabase = await createClient();
 
-  const [householdResult, personalResult, favouritesResult, deletedResult] = await Promise.all([
+  const [householdResult, personalResult, favouritesResult, deletedResult, tagsResult, savedFiltersResult] = await Promise.all([
     ctx.activeHousehold
       ? supabase
           .from("recipes")
@@ -87,13 +174,32 @@ export default async function RecipeLibraryPage() {
       .select("id, title, deleted_at")
       .not("deleted_at", "is", null)
       .order("deleted_at", { ascending: false }),
+    ctx.activeHousehold
+      ? supabase
+          .from("tags")
+          .select("id, name")
+          .or(`visibility.eq.personal,household_id.eq.${ctx.activeHousehold.householdId}`)
+          .order("name")
+      : supabase.from("tags").select("id, name").eq("visibility", "personal").order("name"),
+    supabase
+      .from("saved_filters")
+      .select("id, name, filter")
+      .eq("user_id", ctx.userId)
+      .order("created_at", { ascending: false }),
   ]);
 
-  const householdRecipes = await toCardData((householdResult.data ?? []) as unknown as RawRecipeRow[]);
-  const personalRecipes = await toCardData((personalResult.data ?? []) as unknown as RawRecipeRow[]);
+  const householdFiltered = ((householdResult.data ?? []) as unknown as RawRecipeRow[]).filter((r) =>
+    matchesFilters(r, filters)
+  );
+  const personalFiltered = ((personalResult.data ?? []) as unknown as RawRecipeRow[]).filter((r) =>
+    matchesFilters(r, filters)
+  );
   const favouriteRows = ((favouritesResult.data ?? []) as unknown as { recipes: RawRecipeRow }[])
     .map((f) => f.recipes)
-    .filter((r) => !r.deleted_at);
+    .filter((r) => !r.deleted_at && matchesFilters(r, filters));
+
+  const householdRecipes = await toCardData(householdFiltered);
+  const personalRecipes = await toCardData(personalFiltered);
   const favouriteRecipes = await toCardData(favouriteRows);
   const deletedRecipes = deletedResult.data ?? [];
 
@@ -109,6 +215,12 @@ export default async function RecipeLibraryPage() {
         <Button render={<Link href="/recipes/new" />}>Add Recipe</Button>
       </div>
 
+      <RecipeSearchBar
+        tags={tagsResult.data ?? []}
+        savedFilters={(savedFiltersResult.data ?? []) as { id: string; name: string; filter: Record<string, string> }[]}
+        householdId={ctx.activeHousehold?.householdId ?? null}
+      />
+
       <Tabs defaultValue={ctx.activeHousehold ? "household" : "personal"}>
         <TabsList>
           {ctx.activeHousehold ? <TabsTrigger value="household">Household</TabsTrigger> : null}
@@ -118,14 +230,14 @@ export default async function RecipeLibraryPage() {
 
         {ctx.activeHousehold ? (
           <TabsContent value="household">
-            <RecipeGrid recipes={householdRecipes} emptyLabel="No household recipes yet." />
+            <RecipeGrid recipes={householdRecipes} emptyLabel="No household recipes match." />
           </TabsContent>
         ) : null}
         <TabsContent value="personal">
-          <RecipeGrid recipes={personalRecipes} emptyLabel="No private recipes yet." />
+          <RecipeGrid recipes={personalRecipes} emptyLabel="No private recipes match." />
         </TabsContent>
         <TabsContent value="favourites">
-          <RecipeGrid recipes={favouriteRecipes} emptyLabel="Favourite a recipe to see it here." />
+          <RecipeGrid recipes={favouriteRecipes} emptyLabel="No favourites match." />
         </TabsContent>
       </Tabs>
 

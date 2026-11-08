@@ -50,6 +50,18 @@ export const COOKING_METHODS = [
   "No Cook",
 ] as const;
 
+export const DIETARY_LABELS = [
+  "Vegetarian",
+  "Vegan",
+  "Gluten Free",
+  "Dairy Free",
+  "Contains Eggs",
+  "High Protein",
+  "High Fibre",
+  "Low FODMAP",
+  "Low Lactose",
+] as const;
+
 export const MEAL_TYPES = [
   "Breakfast",
   "Lunch",
@@ -111,6 +123,9 @@ export const recipeFormSchema = z.object({
   meal_type: z.array(z.string()).default([]),
   cooking_method: z.string().trim().optional(),
   equipment: z.array(z.string()).default([]),
+  dietary_labels: z.array(z.string()).default([]),
+  dietary_labels_verified: z.array(z.string()).default([]),
+  tag_ids: z.array(z.string().uuid()).default([]),
   ingredients: z.array(recipeIngredientSchema).min(1, "Add at least one ingredient"),
   steps: z.array(recipeStepSchema).min(1, "Add at least one step"),
 });

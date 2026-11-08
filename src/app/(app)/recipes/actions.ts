@@ -29,6 +29,9 @@ function toRpcPayload(values: RecipeFormValues) {
       meal_type: values.meal_type,
       cooking_method: values.cooking_method ?? "",
       equipment: values.equipment,
+      dietary_labels: values.dietary_labels,
+      dietary_labels_verified: values.dietary_labels_verified,
+      tag_ids: values.tag_ids,
     },
     ingredients: values.ingredients.map((i) => ({
       ingredient_name: i.ingredient_name,

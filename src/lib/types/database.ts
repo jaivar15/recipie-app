@@ -23,6 +23,92 @@ export type Database = {
   };
   public: {
     Tables: {
+      collection_recipes: {
+        Row: {
+          added_at: string;
+          collection_id: string;
+          position: number;
+          recipe_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          added_at?: string;
+          collection_id: string;
+          position?: number;
+          recipe_id: string;
+        };
+        Update: {
+          added_at?: string;
+          collection_id?: string;
+          position?: number;
+          recipe_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "collection_recipes_collection_id_fkey";
+            columns: ["collection_id"];
+            isOneToOne: false;
+            referencedRelation: "collections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "collection_recipes_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      collections: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          description: string | null;
+          household_id: string | null;
+          id: string;
+          name: string;
+          updated_at: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          description?: string | null;
+          household_id?: string | null;
+          id?: string;
+          name: string;
+          updated_at?: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          description?: string | null;
+          household_id?: string | null;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+          visibility?: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "collections_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "collections_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       household_activity_logs: {
         Row: {
           action: string;
@@ -710,6 +796,37 @@ export type Database = {
           },
         ];
       };
+      recipe_tags: {
+        Row: {
+          recipe_id: string;
+          tag_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          recipe_id: string;
+          tag_id: string;
+        };
+        Update: {
+          recipe_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_tags_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipe_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            isOneToOne: false;
+            referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       recipes: {
         Row: {
           author_name: string | null;
@@ -720,6 +837,8 @@ export type Database = {
           cuisine: string | null;
           deleted_at: string | null;
           description: string | null;
+          dietary_labels: string[];
+          dietary_labels_verified: string[];
           difficulty: Database["public"]["Enums"]["recipe_difficulty"] | null;
           equipment: string[];
           finished_weight_grams: number | null;
@@ -748,6 +867,8 @@ export type Database = {
           cuisine?: string | null;
           deleted_at?: string | null;
           description?: string | null;
+          dietary_labels?: string[];
+          dietary_labels_verified?: string[];
           difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null;
           equipment?: string[];
           finished_weight_grams?: number | null;
@@ -775,6 +896,8 @@ export type Database = {
           cuisine?: string | null;
           deleted_at?: string | null;
           description?: string | null;
+          dietary_labels?: string[];
+          dietary_labels_verified?: string[];
           difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null;
           equipment?: string[];
           finished_weight_grams?: number | null;
@@ -824,6 +947,92 @@ export type Database = {
           },
         ];
       };
+      saved_filters: {
+        Row: {
+          created_at: string;
+          filter: NonNullable<Json>;
+          household_id: string | null;
+          id: string;
+          name: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          filter?: NonNullable<Json>;
+          household_id?: string | null;
+          id?: string;
+          name: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          filter?: NonNullable<Json>;
+          household_id?: string | null;
+          id?: string;
+          name?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "saved_filters_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "saved_filters_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      tags: {
+        Row: {
+          created_at: string;
+          created_by: string;
+          household_id: string | null;
+          id: string;
+          name: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by: string;
+          household_id?: string | null;
+          id?: string;
+          name: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string;
+          household_id?: string | null;
+          id?: string;
+          name?: string;
+          visibility?: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tags_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tags_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -831,10 +1040,14 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       archive_household: { Args: { p_household_id: string }; Returns: undefined };
+      can_edit_collection: { Args: { p_collection_id: string }; Returns: boolean };
       can_edit_ingredient: { Args: { p_ingredient_id: string }; Returns: boolean };
       can_edit_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
+      can_edit_tag: { Args: { p_tag_id: string }; Returns: boolean };
+      can_view_collection: { Args: { p_collection_id: string }; Returns: boolean };
       can_view_ingredient: { Args: { p_ingredient_id: string }; Returns: boolean };
       can_view_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
+      can_view_tag: { Args: { p_tag_id: string }; Returns: boolean };
       change_member_role: {
         Args: {
           p_household_id: string;
@@ -928,6 +1141,10 @@ export type Database = {
       };
       update_recipe: {
         Args: { p_ingredients: Json; p_recipe: Json; p_recipe_id: string; p_steps: Json };
+        Returns: undefined;
+      };
+      update_recipe_dietary_labels: {
+        Args: { p_labels: string[]; p_recipe_id: string; p_verified: string[] };
         Returns: undefined;
       };
     };

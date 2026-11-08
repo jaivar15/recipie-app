@@ -7,6 +7,7 @@ import type { HouseholdMembership } from "@/lib/households/context";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -75,21 +76,23 @@ export function HouseholdSwitcher({
             <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64" align="start">
-            <DropdownMenuLabel className="text-xs text-muted-foreground">Your households</DropdownMenuLabel>
-            {households.map((h) => (
-              <DropdownMenuItem
-                key={h.householdId}
-                disabled={isPending}
-                onSelect={() => startTransition(() => setActiveHouseholdAction(h.householdId))}
-                className="gap-2"
-              >
-                <Avatar className="h-5 w-5 rounded-sm">
-                  <AvatarImage src={h.imageUrl ?? undefined} />
-                  <AvatarFallback className="rounded-sm text-[10px]">{initials(h.householdName)}</AvatarFallback>
-                </Avatar>
-                <span className="truncate">{h.householdName}</span>
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">Your households</DropdownMenuLabel>
+              {households.map((h) => (
+                <DropdownMenuItem
+                  key={h.householdId}
+                  disabled={isPending}
+                  onSelect={() => startTransition(() => setActiveHouseholdAction(h.householdId))}
+                  className="gap-2"
+                >
+                  <Avatar className="h-5 w-5 rounded-sm">
+                    <AvatarImage src={h.imageUrl ?? undefined} />
+                    <AvatarFallback className="rounded-sm text-[10px]">{initials(h.householdName)}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{h.householdName}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setDialogOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />

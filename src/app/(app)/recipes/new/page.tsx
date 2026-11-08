@@ -1,4 +1,5 @@
 import { getHouseholdContext } from "@/lib/households/context";
+import { createClient } from "@/lib/supabase/server";
 import { RecipeForm } from "@/components/recipes/recipe-form";
 import { createRecipeAction } from "../actions";
 import type { RecipeFormValues } from "@/lib/validations/recipe";
@@ -10,6 +11,15 @@ export default async function AddRecipePage() {
   const editableHouseholds = ctx.households
     .filter((h) => h.role === "owner" || h.role === "editor")
     .map((h) => ({ id: h.householdId, name: h.householdName }));
+
+  const supabase = await createClient();
+  const { data: tags } = ctx.activeHousehold
+    ? await supabase
+        .from("tags")
+        .select("id, name")
+        .or(`visibility.eq.personal,household_id.eq.${ctx.activeHousehold.householdId}`)
+        .order("name")
+    : await supabase.from("tags").select("id, name").eq("visibility", "personal").order("name");
 
   async function handleCreate(values: RecipeFormValues) {
     "use server";
@@ -28,6 +38,7 @@ export default async function AddRecipePage() {
           household_id: editableHouseholds[0]?.id ?? null,
         }}
         households={editableHouseholds}
+        availableTags={tags ?? []}
         submitLabel="Create recipe"
         onSubmit={handleCreate}
       />
