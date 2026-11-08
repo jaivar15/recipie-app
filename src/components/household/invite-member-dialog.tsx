@@ -106,7 +106,11 @@ export function InviteMemberDialog({ householdId }: { householdId: string }) {
                 <Label htmlFor="invite-role">Role</Label>
                 <Select name="role" defaultValue="viewer">
                   <SelectTrigger id="invite-role">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value: string) =>
+                        value === "editor" ? "Editor — can add and edit recipes" : "Viewer — can view and cook along"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="editor">Editor — can add and edit recipes</SelectItem>

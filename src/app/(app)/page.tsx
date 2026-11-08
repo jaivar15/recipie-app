@@ -18,6 +18,10 @@ const ACTION_LABELS: Record<string, string> = {
   ownership_transferred: "transferred ownership",
   household_deleted: "deleted the household",
   household_restored: "restored the household",
+  recipe_created: "added a recipe",
+  recipe_edited: "edited a recipe",
+  recipe_deleted: "deleted a recipe",
+  recipe_restored: "restored a recipe",
 };
 
 export default async function DashboardPage() {
@@ -45,11 +49,16 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const householdId = ctx.activeHousehold.householdId;
 
-  const [{ count: memberCount }, { data: activity }] = await Promise.all([
+  const [{ count: memberCount }, { count: recipeCount }, { data: activity }] = await Promise.all([
     supabase
       .from("household_members")
       .select("*", { count: "exact", head: true })
       .eq("household_id", householdId),
+    supabase
+      .from("recipes")
+      .select("*", { count: "exact", head: true })
+      .eq("household_id", householdId)
+      .eq("visibility", "household"),
     supabase
       .from("household_activity_logs")
       .select("id, action, created_at, actor_id, profiles(display_name, avatar_url)")
@@ -66,7 +75,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Household recipes" value="0" icon={BookOpen} />
+        <StatCard title="Household recipes" value={String(recipeCount ?? 0)} icon={BookOpen} />
         <StatCard title="Family members" value={String(memberCount ?? 1)} icon={Users} />
         <StatCard title="This week's meals" value="0" icon={CalendarDays} />
         <StatCard title="Active shopping lists" value="0" icon={ShoppingCart} />

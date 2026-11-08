@@ -274,6 +274,335 @@ export type Database = {
           },
         ];
       };
+      recipe_favourites: {
+        Row: {
+          created_at: string;
+          id: string;
+          recipe_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          recipe_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          recipe_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_favourites_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipe_favourites_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recipe_images: {
+        Row: {
+          caption: string | null;
+          created_at: string;
+          id: string;
+          is_primary: boolean;
+          position: number;
+          recipe_id: string;
+          storage_path: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          caption?: string | null;
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean;
+          position?: number;
+          recipe_id: string;
+          storage_path: string;
+        };
+        Update: {
+          caption?: string | null;
+          created_at?: string;
+          id?: string;
+          is_primary?: boolean;
+          position?: number;
+          recipe_id?: string;
+          storage_path?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_images_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recipe_ingredients: {
+        Row: {
+          brand: string | null;
+          created_at: string;
+          id: string;
+          ingredient_name: string;
+          nutrition_override: Json | null;
+          position: number;
+          preparation_note: string | null;
+          quantity: number | null;
+          recipe_id: string;
+          unit: Database["public"]["Enums"]["measurement_unit"] | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          brand?: string | null;
+          created_at?: string;
+          id?: string;
+          ingredient_name: string;
+          nutrition_override?: Json | null;
+          position?: number;
+          preparation_note?: string | null;
+          quantity?: number | null;
+          recipe_id: string;
+          unit?: Database["public"]["Enums"]["measurement_unit"] | null;
+        };
+        Update: {
+          brand?: string | null;
+          created_at?: string;
+          id?: string;
+          ingredient_name?: string;
+          nutrition_override?: Json | null;
+          position?: number;
+          preparation_note?: string | null;
+          quantity?: number | null;
+          recipe_id?: string;
+          unit?: Database["public"]["Enums"]["measurement_unit"] | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recipe_personal_notes: {
+        Row: {
+          created_at: string;
+          id: string;
+          note: string;
+          recipe_id: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          note: string;
+          recipe_id: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          note?: string;
+          recipe_id?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_personal_notes_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipe_personal_notes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recipe_steps: {
+        Row: {
+          created_at: string;
+          duration_minutes: number | null;
+          equipment: string | null;
+          id: string;
+          image_storage_path: string | null;
+          instruction: string;
+          position: number;
+          recipe_id: string;
+          temperature_celsius: number | null;
+          tip: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          duration_minutes?: number | null;
+          equipment?: string | null;
+          id?: string;
+          image_storage_path?: string | null;
+          instruction: string;
+          position?: number;
+          recipe_id: string;
+          temperature_celsius?: number | null;
+          tip?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          duration_minutes?: number | null;
+          equipment?: string | null;
+          id?: string;
+          image_storage_path?: string | null;
+          instruction?: string;
+          position?: number;
+          recipe_id?: string;
+          temperature_celsius?: number | null;
+          tip?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipe_steps_recipe_id_fkey";
+            columns: ["recipe_id"];
+            isOneToOne: false;
+            referencedRelation: "recipes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recipes: {
+        Row: {
+          author_name: string | null;
+          cook_time_minutes: number | null;
+          cooking_method: string | null;
+          created_at: string;
+          created_by: string;
+          cuisine: string | null;
+          deleted_at: string | null;
+          description: string | null;
+          difficulty: Database["public"]["Enums"]["recipe_difficulty"] | null;
+          equipment: string[];
+          finished_weight_grams: number | null;
+          household_id: string | null;
+          id: string;
+          last_edited_by: string | null;
+          meal_type: string[];
+          original_author_id: string | null;
+          prep_time_minutes: number | null;
+          resting_time_minutes: number | null;
+          serving_size: string | null;
+          servings: number;
+          source: string | null;
+          source_url: string | null;
+          title: string;
+          updated_at: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        ComputedFields: never;
+        Insert: {
+          author_name?: string | null;
+          cook_time_minutes?: number | null;
+          cooking_method?: string | null;
+          created_at?: string;
+          created_by: string;
+          cuisine?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null;
+          equipment?: string[];
+          finished_weight_grams?: number | null;
+          household_id?: string | null;
+          id?: string;
+          last_edited_by?: string | null;
+          meal_type?: string[];
+          original_author_id?: string | null;
+          prep_time_minutes?: number | null;
+          resting_time_minutes?: number | null;
+          serving_size?: string | null;
+          servings?: number;
+          source?: string | null;
+          source_url?: string | null;
+          title: string;
+          updated_at?: string;
+          visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Update: {
+          author_name?: string | null;
+          cook_time_minutes?: number | null;
+          cooking_method?: string | null;
+          created_at?: string;
+          created_by?: string;
+          cuisine?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          difficulty?: Database["public"]["Enums"]["recipe_difficulty"] | null;
+          equipment?: string[];
+          finished_weight_grams?: number | null;
+          household_id?: string | null;
+          id?: string;
+          last_edited_by?: string | null;
+          meal_type?: string[];
+          original_author_id?: string | null;
+          prep_time_minutes?: number | null;
+          resting_time_minutes?: number | null;
+          serving_size?: string | null;
+          servings?: number;
+          source?: string | null;
+          source_url?: string | null;
+          title?: string;
+          updated_at?: string;
+          visibility?: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recipes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipes_household_id_fkey";
+            columns: ["household_id"];
+            isOneToOne: false;
+            referencedRelation: "households";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipes_last_edited_by_fkey";
+            columns: ["last_edited_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recipes_original_author_id_fkey";
+            columns: ["original_author_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -281,6 +610,8 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       archive_household: { Args: { p_household_id: string }; Returns: undefined };
+      can_edit_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
+      can_view_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
       change_member_role: {
         Args: {
           p_household_id: string;
@@ -302,11 +633,23 @@ export type Database = {
           raw_token: string;
         }[];
       };
+      create_recipe: {
+        Args: { p_ingredients: Json; p_recipe: Json; p_steps: Json };
+        Returns: string;
+      };
       current_household_role: {
         Args: { p_household_id: string };
         Returns: Database["public"]["Enums"]["household_role"];
       };
       decline_invitation: { Args: { p_token: string }; Returns: undefined };
+      duplicate_recipe: {
+        Args: {
+          p_recipe_id: string;
+          p_target_household_id?: string;
+          p_target_visibility: Database["public"]["Enums"]["recipe_visibility"];
+        };
+        Returns: string;
+      };
       get_invitation_preview: {
         Args: { p_token: string };
         Returns: {
@@ -339,16 +682,35 @@ export type Database = {
         Returns: undefined;
       };
       restore_household: { Args: { p_household_id: string }; Returns: undefined };
+      restore_recipe: { Args: { p_recipe_id: string }; Returns: undefined };
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
       shares_household_with: { Args: { p_user_id: string }; Returns: boolean };
+      soft_delete_recipe: { Args: { p_recipe_id: string }; Returns: undefined };
       transfer_household_ownership: {
         Args: { p_household_id: string; p_new_owner_user_id: string };
+        Returns: undefined;
+      };
+      update_recipe: {
+        Args: { p_ingredients: Json; p_recipe: Json; p_recipe_id: string; p_steps: Json };
         Returns: undefined;
       };
     };
     Enums: {
       household_role: "owner" | "editor" | "viewer";
       invitation_status: "pending" | "accepted" | "declined" | "revoked" | "expired";
+      measurement_unit:
+        | "g"
+        | "kg"
+        | "ml"
+        | "l"
+        | "tsp"
+        | "tbsp"
+        | "cup"
+        | "piece"
+        | "slice"
+        | "clove";
+      recipe_difficulty: "easy" | "medium" | "hard";
+      recipe_visibility: "personal" | "household";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -469,6 +831,9 @@ export const Constants = {
     Enums: {
       household_role: ["owner", "editor", "viewer"],
       invitation_status: ["pending", "accepted", "declined", "revoked", "expired"],
+      measurement_unit: ["g", "kg", "ml", "l", "tsp", "tbsp", "cup", "piece", "slice", "clove"],
+      recipe_difficulty: ["easy", "medium", "hard"],
+      recipe_visibility: ["personal", "household"],
     },
   },
 } as const;

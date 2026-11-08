@@ -50,7 +50,11 @@ export function ProfileForm({
         <Label htmlFor="measurementSystem">Preferred measurement system</Label>
         <Select name="measurementSystem" defaultValue={measurementSystem}>
           <SelectTrigger id="measurementSystem" className="w-full">
-            <SelectValue />
+            <SelectValue>
+              {(value: string) =>
+                value === "imperial" ? "Imperial (oz, cups, °F)" : "Metric (g, mL, °C) — Australian default"
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="metric">Metric (g, mL, °C) — Australian default</SelectItem>
