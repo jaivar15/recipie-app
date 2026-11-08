@@ -12,6 +12,10 @@ export function MealEntryCard({
   recipeId,
   servings,
   memberNames,
+  kcal,
+  kcalComplete,
+  proteinG,
+  proteinComplete,
   canEdit,
 }: {
   id: string;
@@ -19,6 +23,10 @@ export function MealEntryCard({
   recipeId: string | null;
   servings: number;
   memberNames: string[];
+  kcal: number | null;
+  kcalComplete: boolean;
+  proteinG: number | null;
+  proteinComplete: boolean;
   canEdit: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -30,6 +38,19 @@ export function MealEntryCard({
         {servings} serving{servings === 1 ? "" : "s"}
         {memberNames.length > 0 ? ` · ${memberNames.join(", ")}` : ""}
       </p>
+      {kcal != null ? (
+        <p className="text-xs text-muted-foreground">
+          {Math.round(kcal).toLocaleString()}
+          {kcalComplete ? "" : "+"} kcal
+          {proteinG != null ? (
+            <>
+              {" · "}
+              {Math.round(proteinG)}
+              {proteinComplete ? "" : "+"} g protein
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 
