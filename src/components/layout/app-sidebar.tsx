@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChefHat, LogOut } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
-import { primaryNav, secondaryNav } from "./nav-config";
+import { primaryNav, secondaryNav, healthNav } from "./nav-config";
 import { HouseholdSwitcher } from "@/components/household/household-switcher";
 import type { HouseholdMembership } from "@/lib/households/context";
 import {
@@ -57,6 +57,24 @@ export function AppSidebar({
             <SidebarMenu>
               {primaryNav.map((item) => {
                 const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton render={<Link href={item.href} />} isActive={isActive} tooltip={item.title}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>My Health &amp; Fitness</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {healthNav.map((item) => {
+                const isActive = item.href === "/health" ? pathname === "/health" : pathname.startsWith(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton render={<Link href={item.href} />} isActive={isActive} tooltip={item.title}>
