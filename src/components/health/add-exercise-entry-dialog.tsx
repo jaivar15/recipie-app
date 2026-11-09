@@ -17,7 +17,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type ExerciseActivityType = Database["public"]["Enums"]["exercise_activity_type"];
 type ExerciseIntensity = Database["public"]["Enums"]["exercise_intensity"];
@@ -104,19 +110,34 @@ export function AddExerciseEntryDialog() {
         >
           <DialogHeader>
             <DialogTitle>Log activity</DialogTitle>
-            <DialogDescription>Any calorie figure you enter is your own estimate, kept separate from your food budget.</DialogDescription>
+            <DialogDescription>
+              Any calorie figure you enter is your own estimate, kept separate from your food
+              budget.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="exercise-date">Date</Label>
-                <Input id="exercise-date" type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} max={today()} required />
+                <Input
+                  id="exercise-date"
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  max={today()}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Activity</Label>
-                <Select value={activityType} onValueChange={(v) => setActivityType(v as ExerciseActivityType)}>
+                <Select
+                  value={activityType}
+                  onValueChange={(v) => setActivityType(v as ExerciseActivityType)}
+                >
                   <SelectTrigger className="w-full">
-                    <SelectValue>{(value: string) => ACTIVITY_LABELS[value as ExerciseActivityType]}</SelectValue>
+                    <SelectValue>
+                      {(value: string) => ACTIVITY_LABELS[value as ExerciseActivityType]}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {ACTIVITY_TYPES.map((a) => (
@@ -131,14 +152,26 @@ export function AddExerciseEntryDialog() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="exercise-duration">Duration (minutes)</Label>
-                <Input id="exercise-duration" type="number" min={1} value={duration} onChange={(e) => setDuration(e.target.value)} required />
+                <Input
+                  id="exercise-duration"
+                  type="number"
+                  min={1}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Intensity (optional)</Label>
-                <Select value={intensity} onValueChange={(v) => setIntensity((v as ExerciseIntensity) ?? "")}>
+                <Select
+                  value={intensity}
+                  onValueChange={(v) => setIntensity((v as ExerciseIntensity) ?? "")}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Not set">
-                      {(value: string) => (value ? INTENSITY_LABELS[value as ExerciseIntensity] : "Not set")}
+                      {(value: string) =>
+                        value ? INTENSITY_LABELS[value as ExerciseIntensity] : "Not set"
+                      }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -151,23 +184,47 @@ export function AddExerciseEntryDialog() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="exercise-distance">Distance (km)</Label>
-                <Input id="exercise-distance" type="number" min={0} step="0.1" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} />
+                <Input
+                  id="exercise-distance"
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={distanceKm}
+                  onChange={(e) => setDistanceKm(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="exercise-steps">Steps</Label>
-                <Input id="exercise-steps" type="number" min={0} value={steps} onChange={(e) => setSteps(e.target.value)} />
+                <Input
+                  id="exercise-steps"
+                  type="number"
+                  min={0}
+                  value={steps}
+                  onChange={(e) => setSteps(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="exercise-calories">Calories (est.)</Label>
-                <Input id="exercise-calories" type="number" min={0} value={estimatedCalories} onChange={(e) => setEstimatedCalories(e.target.value)} />
+                <Input
+                  id="exercise-calories"
+                  type="number"
+                  min={0}
+                  value={estimatedCalories}
+                  onChange={(e) => setEstimatedCalories(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="exercise-notes">Notes (optional)</Label>
-              <Textarea id="exercise-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+              <Textarea
+                id="exercise-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter>
