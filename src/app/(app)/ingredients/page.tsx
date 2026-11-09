@@ -55,7 +55,12 @@ export default async function IngredientsPage() {
             Shared household ingredients, your private ones, nutrition and conversions.
           </p>
         </div>
-        <Button render={<Link href="/ingredients/new" />}>Add Ingredient</Button>
+        <div className="flex gap-2">
+          <Button render={<Link href="/ingredients/import" />} variant="outline">
+            Import
+          </Button>
+          <Button render={<Link href="/ingredients/new" />}>Add Ingredient</Button>
+        </div>
       </div>
 
       <Tabs defaultValue={ctx.activeHousehold ? "household" : "personal"}>
@@ -106,8 +111,12 @@ function IngredientSections({ ingredients }: { ingredients: IngredientRow[] }) {
       {sortedCategories.map((category) => (
         <div key={category} className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">{category}</h2>
-            <span className="text-xs text-muted-foreground">({sections.get(category)!.length})</span>
+            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+              {category}
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              ({sections.get(category)!.length})
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {sections.get(category)!.map((ing) => (
@@ -164,7 +173,9 @@ function IngredientCard({ ingredient: ing }: { ingredient: IngredientRow }) {
           {macros.map((m) => (
             <span key={m.label} className="tabular-nums">
               <span className={`font-semibold ${m.color}`}>{m.value}</span>
-              <span className="text-muted-foreground">{m.unit ? `${m.unit} ${m.label}` : ` ${m.label.toLowerCase()}`}</span>
+              <span className="text-muted-foreground">
+                {m.unit ? `${m.unit} ${m.label}` : ` ${m.label.toLowerCase()}`}
+              </span>
             </span>
           ))}
           <span className="text-muted-foreground">/100g</span>
