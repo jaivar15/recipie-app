@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { HealthProfileSheet } from "@/components/health/health-profile-sheet";
 import { NutritionGoalsSheet } from "@/components/health/nutrition-goals-sheet";
+import { WaterQuickAdd } from "@/components/health/water-quick-add";
 
 export default async function HealthOverviewPage() {
   const ctx = await getHealthContext();
@@ -141,13 +142,14 @@ export default async function HealthOverviewPage() {
             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Water today</p>
             <Droplets className="h-4 w-4 text-chart-4" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <p className="text-2xl font-semibold tabular-nums">
               {waterToday} <span className="text-sm font-normal text-muted-foreground">ml</span>
             </p>
             <p className="text-xs text-muted-foreground">
               {ctx.goals?.water_target_ml ? `Target: ${ctx.goals.water_target_ml} ml` : "No target set"}
             </p>
+            <WaterQuickAdd hasEntriesToday={waterToday > 0} />
           </CardContent>
         </Card>
         <Card>

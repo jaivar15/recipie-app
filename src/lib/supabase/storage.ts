@@ -24,3 +24,19 @@ export async function signRecipeImageUrl(path: string | null | undefined): Promi
   const map = await signRecipeImageUrls([path]);
   return map[path] ?? null;
 }
+
+export async function signProgressPhotoUrls(paths: string[]): Promise<Record<string, string>> {
+  if (paths.length === 0) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("progress-photos")
+    .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
+
+  if (error || !data) return {};
+
+  const map: Record<string, string> = {};
+  for (const entry of data) {
+    if (entry.signedUrl && entry.path) map[entry.path] = entry.signedUrl;
+  }
+  return map;
+}

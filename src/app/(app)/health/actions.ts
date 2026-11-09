@@ -137,6 +137,36 @@ export async function saveHealthPreferencesAction(values: {
   revalidatePath("/health/goals");
 }
 
+export async function addWaterEntryAction(amountMl: number) {
+  const { supabase, userId } = await requireUserId();
+  const today = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase.from("water_entries").insert({
+    user_id: userId,
+    entry_date: today,
+    amount_ml: amountMl,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/health");
+}
+
+/** Removes this user's most recently logged water entry for today — an "undo" for a mis-tap. */
+export async function removeLastWaterEntryAction() {
+  const { supabase, userId } = await requireUserId();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: last } = await supabase
+    .from("water_entries")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("entry_date", today)
+    .order("logged_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!last) return;
+  const { error } = await supabase.from("water_entries").delete().eq("id", last.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/health");
+}
+
 /** Permanently deletes every row of this user's health data across all tables. */
 export async function deleteAllHealthDataAction() {
   const { supabase, userId } = await requireUserId();
