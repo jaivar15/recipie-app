@@ -3,7 +3,12 @@ import { BookOpen } from "lucide-react";
 import { getHouseholdContext } from "@/lib/households/context";
 import { createClient } from "@/lib/supabase/server";
 import { signRecipeImageUrls } from "@/lib/supabase/storage";
-import { calculateRecipeNutrition, divideNutrients, type RecipeIngredientForCalc, type NutrientSet } from "@/lib/nutrition/calculate";
+import {
+  calculateRecipeNutrition,
+  divideNutrients,
+  type RecipeIngredientForCalc,
+  type NutrientSet,
+} from "@/lib/nutrition/calculate";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,7 +70,9 @@ function matchesFilters(r: RawRecipeRow, filters: Filters): boolean {
   if (filters.q) {
     const q = filters.q.toLowerCase();
     const titleMatch = r.title.toLowerCase().includes(q);
-    const ingredientMatch = r.recipe_ingredients.some((i) => i.ingredient_name.toLowerCase().includes(q));
+    const ingredientMatch = r.recipe_ingredients.some((i) =>
+      i.ingredient_name.toLowerCase().includes(q),
+    );
     if (!titleMatch && !ingredientMatch) return false;
   }
   if (filters.cuisine && r.cuisine !== filters.cuisine) return false;
@@ -87,24 +94,36 @@ function matchesFilters(r: RawRecipeRow, filters: Filters): boolean {
       nutritionOverride: ing.nutrition_override,
       ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
       conversions: Object.fromEntries(
-        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
+          c.unit,
+          c.grams_per_unit,
+        ]),
       ),
     }));
     const perServing = divideNutrients(calculateRecipeNutrition(inputs).nutrients, r.servings);
-    if (filters.minProtein != null && (perServing.protein_g.value ?? 0) < filters.minProtein) return false;
-    if (filters.maxCalories != null && (perServing.calories_kcal.value ?? Infinity) > filters.maxCalories) return false;
+    if (filters.minProtein != null && (perServing.protein_g.value ?? 0) < filters.minProtein)
+      return false;
+    if (
+      filters.maxCalories != null &&
+      (perServing.calories_kcal.value ?? Infinity) > filters.maxCalories
+    )
+      return false;
   }
   return true;
 }
 
 async function toCardData(rows: RawRecipeRow[]): Promise<RecipeCardData[]> {
   const primaryPaths = rows
-    .map((r) => r.recipe_images.find((i) => i.is_primary)?.storage_path ?? r.recipe_images[0]?.storage_path)
+    .map(
+      (r) =>
+        r.recipe_images.find((i) => i.is_primary)?.storage_path ?? r.recipe_images[0]?.storage_path,
+    )
     .filter((p): p is string => !!p);
   const urlMap = await signRecipeImageUrls(primaryPaths);
 
   return rows.map((r) => {
-    const path = r.recipe_images.find((i) => i.is_primary)?.storage_path ?? r.recipe_images[0]?.storage_path;
+    const path =
+      r.recipe_images.find((i) => i.is_primary)?.storage_path ?? r.recipe_images[0]?.storage_path;
     return {
       id: r.id,
       title: r.title,
@@ -142,7 +161,15 @@ export default async function RecipeLibraryPage({
 
   const supabase = await createClient();
 
-  const [householdResult, personalResult, favouritesResult, deletedResult, tagsResult, savedFiltersResult] = await Promise.all([
+  const [
+    householdResult,
+    personalResult,
+    favouritesResult,
+    deletedResult,
+    tagsResult,
+    savedFiltersResult,
+    goalsResult,
+  ] = await Promise.all([
     ctx.activeHousehold
       ? supabase
           .from("recipes")
@@ -186,13 +213,18 @@ export default async function RecipeLibraryPage({
       .select("id, name, filter")
       .eq("user_id", ctx.userId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("nutrition_goals")
+      .select("calorie_target, protein_target_g")
+      .eq("user_id", ctx.userId)
+      .maybeSingle(),
   ]);
 
-  const householdFiltered = ((householdResult.data ?? []) as unknown as RawRecipeRow[]).filter((r) =>
-    matchesFilters(r, filters)
+  const householdFiltered = ((householdResult.data ?? []) as unknown as RawRecipeRow[]).filter(
+    (r) => matchesFilters(r, filters),
   );
   const personalFiltered = ((personalResult.data ?? []) as unknown as RawRecipeRow[]).filter((r) =>
-    matchesFilters(r, filters)
+    matchesFilters(r, filters),
   );
   const favouriteRows = ((favouritesResult.data ?? []) as unknown as { recipes: RawRecipeRow }[])
     .map((f) => f.recipes)
@@ -202,6 +234,20 @@ export default async function RecipeLibraryPage({
   const personalRecipes = await toCardData(personalFiltered);
   const favouriteRecipes = await toCardData(favouriteRows);
   const deletedRecipes = deletedResult.data ?? [];
+
+  // "Per meal" heuristic (target ÷ 4) for the Recipe Library's "Fits my
+  // targets" quick filter — the targets themselves are daily totals, not
+  // per-meal, so this is a reasonable split rather than an exact figure.
+  const goals = goalsResult.data;
+  const nutritionTargets =
+    goals && (goals.calorie_target != null || goals.protein_target_g != null)
+      ? {
+          maxCaloriesPerMeal:
+            goals.calorie_target != null ? Math.round(goals.calorie_target / 4) : null,
+          minProteinPerMeal:
+            goals.protein_target_g != null ? Math.round(Number(goals.protein_target_g) / 4) : null,
+        }
+      : null;
 
   return (
     <div className="space-y-6">
@@ -222,8 +268,15 @@ export default async function RecipeLibraryPage({
 
       <RecipeSearchBar
         tags={tagsResult.data ?? []}
-        savedFilters={(savedFiltersResult.data ?? []) as { id: string; name: string; filter: Record<string, string> }[]}
+        savedFilters={
+          (savedFiltersResult.data ?? []) as {
+            id: string;
+            name: string;
+            filter: Record<string, string>;
+          }[]
+        }
         householdId={ctx.activeHousehold?.householdId ?? null}
+        nutritionTargets={nutritionTargets}
       />
 
       <Tabs defaultValue={ctx.activeHousehold ? "household" : "personal"}>

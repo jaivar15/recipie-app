@@ -36,6 +36,15 @@ const SHORT_MACRO_LABELS: Record<(typeof MACRO_KEYS)[number], string> = {
   fibre_g: "Fb",
 };
 
+/** Mirrors the checkbox labels in HealthPreferencesSheet — shown as badges only for members who opted in. */
+const PREFERENCE_LABELS: { column: "strict_gluten_free" | "vegetarian" | "low_fodmap" | "higher_fibre" | "lower_saturated_fat" | "protein_focused"; label: string }[] = [
+  { column: "strict_gluten_free", label: "Gluten-free" },
+  { column: "vegetarian", label: "Vegetarian" },
+  { column: "low_fodmap", label: "Low FODMAP" },
+  { column: "higher_fibre", label: "Higher fibre" },
+  { column: "lower_saturated_fat", label: "Lower sat. fat" },
+  { column: "protein_focused", label: "Protein-focused" },
+];
 
 function mondayOf(d: Date): Date {
   const date = new Date(d);
@@ -92,11 +101,18 @@ export default async function MealPlannerPage({
   const supabase = await createClient();
 
   const [{ data: mealPlan }, { data: recipeRows }, { data: memberRows }] = await Promise.all([
-    supabase.from("meal_plans").select("id").eq("household_id", householdId).eq("start_date", weekStartISO).maybeSingle(),
+    supabase
+      .from("meal_plans")
+      .select("id")
+      .eq("household_id", householdId)
+      .eq("start_date", weekStartISO)
+      .maybeSingle(),
     supabase
       .from("recipes")
       .select("id, title")
-      .or(`and(visibility.eq.household,household_id.eq.${householdId}),and(visibility.eq.personal,created_by.eq.${ctx.userId})`)
+      .or(
+        `and(visibility.eq.household,household_id.eq.${householdId}),and(visibility.eq.personal,created_by.eq.${ctx.userId})`,
+      )
       .is("deleted_at", null)
       .order("title"),
     supabase
@@ -108,6 +124,29 @@ export default async function MealPlannerPage({
   const members = (memberRows ?? [])
     .filter((m) => m.profiles)
     .map((m) => ({ id: m.user_id, name: m.profiles!.display_name || "Member" }));
+  const memberIds = members.map((m) => m.id);
+
+  // Opt-in-only: a member's food preferences only show up here when they've
+  // explicitly turned on share_preferences_with_household — enforced at the
+  // RLS level (health_preferences_shared_with_household), never weight,
+  // measurements, goals or food diary.
+  const [{ data: preferenceRows }, { data: myGoals }] = await Promise.all([
+    memberIds.length > 0
+      ? supabase
+          .from("health_preferences")
+          .select("user_id, strict_gluten_free, vegetarian, low_fodmap, higher_fibre, lower_saturated_fat, protein_focused")
+          .in("user_id", memberIds)
+          .eq("share_preferences_with_household", true)
+      : Promise.resolve({ data: [] as never[] }),
+    supabase.from("nutrition_goals").select("calorie_target, protein_target_g").eq("user_id", ctx.userId).maybeSingle(),
+  ]);
+
+  const preferencesByUserId = new Map<string, string[]>();
+  for (const row of preferenceRows ?? []) {
+    const labels = PREFERENCE_LABELS.filter((p) => row[p.column]).map((p) => p.label);
+    if (labels.length > 0) preferencesByUserId.set(row.user_id, labels);
+  }
+  const membersWithPreferences = members.map((m) => ({ ...m, preferences: preferencesByUserId.get(m.id) ?? [] }));
 
   type DayEntry = {
     id: string;
@@ -129,7 +168,7 @@ export default async function MealPlannerPage({
          recipes(title, servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
            ingredients(ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
              ingredient_measurement_conversions(unit, grams_per_unit)))),
-         meal_plan_member_portions(user_id, profiles!meal_plan_member_portions_user_id_fkey(display_name))`
+         meal_plan_member_portions(user_id, profiles!meal_plan_member_portions_user_id_fkey(display_name))`,
       )
       .eq("meal_plan_id", mealPlan.id)
       .order("entry_date")
@@ -147,7 +186,10 @@ export default async function MealPlannerPage({
           nutritionOverride: ing.nutrition_override as NutrientSet | null,
           ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
           conversions: Object.fromEntries(
-            (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+            (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
+              c.unit,
+              c.grams_per_unit,
+            ]),
           ),
         }));
         const totals = calculateRecipeNutrition(inputs).nutrients;
@@ -163,15 +205,21 @@ export default async function MealPlannerPage({
         servings: Number(e.servings),
         title: e.recipes?.title ?? e.custom_title ?? "Meal",
         recipeId: e.recipe_id,
-        memberNames: (e.meal_plan_member_portions ?? []).map((p) => p.profiles?.display_name || "Member"),
+        memberNames: (e.meal_plan_member_portions ?? []).map(
+          (p) => p.profiles?.display_name || "Member",
+        ),
         macros,
       });
       entriesByDay.set(e.entry_date, list);
     }
   }
 
-  const totalEntries = Array.from(entriesByDay.values()).reduce((sum, list) => sum + list.length, 0);
-  const formatHeader = (d: Date) => d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+  const totalEntries = Array.from(entriesByDay.values()).reduce(
+    (sum, list) => sum + list.length,
+    0,
+  );
+  const formatHeader = (d: Date) =>
+    d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 
   return (
     <div className="space-y-6">
@@ -183,25 +231,56 @@ export default async function MealPlannerPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" render={<Link href={`/meal-planner?week=${prevWeek}`} />}>
+          <Button
+            variant="outline"
+            size="icon"
+            render={<Link href={`/meal-planner?week=${prevWeek}`} />}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" render={<Link href={`/meal-planner?week=${toISODate(mondayOf(new Date()))}`} />}>
+          <Button
+            variant="outline"
+            render={<Link href={`/meal-planner?week=${toISODate(mondayOf(new Date()))}`} />}
+          >
             This week
           </Button>
-          <Button variant="outline" size="icon" render={<Link href={`/meal-planner?week=${nextWeek}`} />}>
+          <Button
+            variant="outline"
+            size="icon"
+            render={<Link href={`/meal-planner?week=${nextWeek}`} />}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
           {mealPlan && totalEntries > 0 ? (
-            <GenerateShoppingListButton mealPlanId={mealPlan.id} weekLabel={`${formatHeader(weekStart)} – ${formatHeader(weekEnd)}`} />
+            <GenerateShoppingListButton
+              mealPlanId={mealPlan.id}
+              weekLabel={`${formatHeader(weekStart)} – ${formatHeader(weekEnd)}`}
+            />
           ) : null}
         </div>
       </div>
 
+      {myGoals && (myGoals.calorie_target != null || myGoals.protein_target_g != null) ? (
+        <p className="text-xs text-muted-foreground">
+          Your daily target (private — only you see this):{" "}
+          {myGoals.calorie_target != null ? `${myGoals.calorie_target} kcal` : null}
+          {myGoals.calorie_target != null && myGoals.protein_target_g != null ? " · " : null}
+          {myGoals.protein_target_g != null ? `${myGoals.protein_target_g}g protein` : null}
+          {" · "}
+          <Link href="/health/goals" className="underline">
+            Adjust
+          </Link>
+        </p>
+      ) : null}
+
       <div className="space-y-3">
         {days.map((day) => {
           const dateISO = toISODate(day);
-          const dayLabel = day.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+          const dayLabel = day.toLocaleDateString("en-AU", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          });
           const dayEntries = entriesByDay.get(dateISO) ?? [];
           const isToday = dateISO === toISODate(new Date());
           const dayTotals = MACRO_KEYS.map((key) => ({
@@ -209,7 +288,9 @@ export default async function MealPlannerPage({
             ...NUTRIENT_LABELS[key],
             value: dayEntries.reduce((sum, e) => sum + (e.macros[key].value ?? 0), 0),
             known: dayEntries.some((e) => e.macros[key].value != null),
-            complete: dayEntries.every((e) => e.macros[key].value != null && e.macros[key].complete),
+            complete: dayEntries.every(
+              (e) => e.macros[key].value != null && e.macros[key].complete,
+            ),
           }));
           const dayCalories = dayTotals.find((t) => t.key === "calories_kcal")!;
           const dayMacroBadges = dayTotals.filter((t) => t.key !== "calories_kcal" && t.known);
@@ -228,7 +309,7 @@ export default async function MealPlannerPage({
                     date={dateISO}
                     dateLabel={dayLabel}
                     recipes={recipeRows ?? []}
-                    members={members}
+                    members={membersWithPreferences}
                   />
                 ) : null}
               </div>
@@ -264,7 +345,9 @@ export default async function MealPlannerPage({
 
               {dayHasNutrition ? (
                 <div className="flex shrink-0 flex-col gap-1.5 rounded-md bg-muted/40 p-2 md:w-56">
-                  <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Day total</p>
+                  <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                    Day total
+                  </p>
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     {dayCalories.known ? (
                       <p className="font-semibold tabular-nums">

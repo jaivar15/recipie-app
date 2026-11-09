@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { HealthProfileSheet } from "@/components/health/health-profile-sheet";
 import { NutritionGoalsSheet } from "@/components/health/nutrition-goals-sheet";
 import { WaterQuickAdd } from "@/components/health/water-quick-add";
+import { HealthPreferencesSheet } from "@/components/health/health-preferences-sheet";
 
 export default async function HealthOverviewPage() {
   const ctx = await getHealthContext();
@@ -47,16 +48,26 @@ export default async function HealthOverviewPage() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from("water_entries").select("amount_ml").eq("user_id", ctx.userId).eq("entry_date", today),
+    supabase
+      .from("water_entries")
+      .select("amount_ml")
+      .eq("user_id", ctx.userId)
+      .eq("entry_date", today),
   ]);
 
   const startingKg = ctx.profile.starting_weight_kg ? Number(ctx.profile.starting_weight_kg) : null;
-  const currentKg = latestWeight ? Number(latestWeight.weight_kg) : ctx.profile.current_weight_kg ? Number(ctx.profile.current_weight_kg) : null;
+  const currentKg = latestWeight
+    ? Number(latestWeight.weight_kg)
+    : ctx.profile.current_weight_kg
+      ? Number(ctx.profile.current_weight_kg)
+      : null;
   const targetKg = ctx.profile.target_weight_kg ? Number(ctx.profile.target_weight_kg) : null;
-  const change = startingKg != null && currentKg != null ? summarizeWeightChange(startingKg, currentKg) : null;
+  const change =
+    startingKg != null && currentKg != null ? summarizeWeightChange(startingKg, currentKg) : null;
   const waterToday = (todayWater ?? []).reduce((sum, w) => sum + w.amount_ml, 0);
 
-  const TrendIcon = change?.trend === "down" ? TrendingDown : change?.trend === "up" ? TrendingUp : Minus;
+  const TrendIcon =
+    change?.trend === "down" ? TrendingDown : change?.trend === "up" ? TrendingUp : Minus;
 
   return (
     <div className="space-y-6">
@@ -70,51 +81,72 @@ export default async function HealthOverviewPage() {
         <div className="flex flex-wrap gap-2">
           <HealthProfileSheet profile={ctx.profile} />
           <NutritionGoalsSheet profile={ctx.profile} goals={ctx.goals} />
+          <HealthPreferencesSheet preferences={ctx.preferences} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Starting</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Starting
+            </p>
             <Scale className="h-4 w-4 text-chart-4" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{startingKg != null ? formatWeight(startingKg, unit) : "—"}</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {startingKg != null ? formatWeight(startingKg, unit) : "—"}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Current</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Current
+            </p>
             <Scale className="h-4 w-4 text-chart-1" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{currentKg != null ? formatWeight(currentKg, unit) : "—"}</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {currentKg != null ? formatWeight(currentKg, unit) : "—"}
+            </p>
             {latestWeight ? (
-              <p className="text-xs text-muted-foreground">as of {new Date(latestWeight.entry_date).toLocaleDateString("en-AU")}</p>
+              <p className="text-xs text-muted-foreground">
+                as of {new Date(latestWeight.entry_date).toLocaleDateString("en-AU")}
+              </p>
             ) : null}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Target</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Target
+            </p>
             <Scale className="h-4 w-4 text-chart-5" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">{targetKg != null ? formatWeight(targetKg, unit) : "—"}</p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {targetKg != null ? formatWeight(targetKg, unit) : "—"}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Change</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Change
+            </p>
             <TrendIcon className="h-4 w-4 text-chart-3" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums">
-              {change ? `${change.totalChangeKg > 0 ? "+" : ""}${formatWeight(change.totalChangeKg, unit)}` : "—"}
+              {change
+                ? `${change.totalChangeKg > 0 ? "+" : ""}${formatWeight(change.totalChangeKg, unit)}`
+                : "—"}
             </p>
             <p className="text-xs text-muted-foreground">
-              {change?.percentChange != null ? `${change.percentChange.toFixed(1)}% since start` : "Log a starting weight to compare"}
+              {change?.percentChange != null
+                ? `${change.percentChange.toFixed(1)}% since start`
+                : "Log a starting weight to compare"}
             </p>
           </CardContent>
         </Card>
@@ -123,12 +155,15 @@ export default async function HealthOverviewPage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Daily calorie target</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Daily calorie target
+            </p>
             <Flame className="h-4 w-4 text-chart-1" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold tabular-nums">
-              {ctx.goals?.calorie_target ?? "—"} <span className="text-sm font-normal text-muted-foreground">kcal</span>
+              {ctx.goals?.calorie_target ?? "—"}{" "}
+              <span className="text-sm font-normal text-muted-foreground">kcal</span>
             </p>
             <p className="text-xs text-muted-foreground">
               <Link href="/health/calories" className="underline">
@@ -139,7 +174,9 @@ export default async function HealthOverviewPage() {
         </Card>
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Water today</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Water today
+            </p>
             <Droplets className="h-4 w-4 text-chart-4" />
           </CardHeader>
           <CardContent className="space-y-2">
@@ -147,14 +184,18 @@ export default async function HealthOverviewPage() {
               {waterToday} <span className="text-sm font-normal text-muted-foreground">ml</span>
             </p>
             <p className="text-xs text-muted-foreground">
-              {ctx.goals?.water_target_ml ? `Target: ${ctx.goals.water_target_ml} ml` : "No target set"}
+              {ctx.goals?.water_target_ml
+                ? `Target: ${ctx.goals.water_target_ml} ml`
+                : "No target set"}
             </p>
             <WaterQuickAdd hasEntriesToday={waterToday > 0} />
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-0">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Quick links</p>
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Quick links
+            </p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" render={<Link href="/health/weight" />}>
@@ -171,8 +212,8 @@ export default async function HealthOverviewPage() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Short-term weight changes include water and digestion, not just fat — the Weight Tracker uses a 7-day
-        average to help separate normal fluctuation from a longer-term trend.
+        Short-term weight changes include water and digestion, not just fat — the Weight Tracker
+        uses a 7-day average to help separate normal fluctuation from a longer-term trend.
       </p>
     </div>
   );

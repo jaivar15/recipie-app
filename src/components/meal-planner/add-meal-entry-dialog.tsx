@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,7 @@ export function AddMealEntryDialog({
   date: string;
   dateLabel: string;
   recipes: { id: string; title: string }[];
-  members: { id: string; name: string }[];
+  members: { id: string; name: string; preferences: string[] }[];
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"recipe" | "custom">("recipe");
@@ -123,7 +124,9 @@ export function AddMealEntryDialog({
                 <Select value={recipeId} onValueChange={(v) => setRecipeId(v ?? "")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Choose a recipe">
-                      {(value: string) => recipes.find((r) => r.id === value)?.title ?? "Choose a recipe"}
+                      {(value: string) =>
+                        recipes.find((r) => r.id === value)?.title ?? "Choose a recipe"
+                      }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -149,7 +152,9 @@ export function AddMealEntryDialog({
                 <Label>Meal</Label>
                 <Select value={mealType} onValueChange={(v) => setMealType(v as MealType)}>
                   <SelectTrigger className="w-full">
-                    <SelectValue>{(value: string) => MEAL_TYPES.find((m) => m.value === value)?.label}</SelectValue>
+                    <SelectValue>
+                      {(value: string) => MEAL_TYPES.find((m) => m.value === value)?.label}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {MEAL_TYPES.map((m) => (
@@ -176,11 +181,26 @@ export function AddMealEntryDialog({
             {members.length > 0 ? (
               <div className="space-y-2">
                 <Label>Who&apos;s eating?</Label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-2">
                   {members.map((m) => (
-                    <label key={m.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox checked={memberIds.includes(m.id)} onCheckedChange={() => toggleMember(m.id)} />
-                      {m.name}
+                    <label key={m.id} className="flex items-start gap-2 text-sm">
+                      <Checkbox
+                        checked={memberIds.includes(m.id)}
+                        onCheckedChange={() => toggleMember(m.id)}
+                        className="mt-0.5"
+                      />
+                      <span className="space-y-1">
+                        <span className="block">{m.name}</span>
+                        {m.preferences.length > 0 ? (
+                          <span className="flex flex-wrap gap-1">
+                            {m.preferences.map((p) => (
+                              <Badge key={p} variant="outline" className="font-normal">
+                                {p}
+                              </Badge>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -189,7 +209,12 @@ export function AddMealEntryDialog({
 
             <div className="space-y-2">
               <Label htmlFor="meal-notes">Notes</Label>
-              <Textarea id="meal-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+              <Textarea
+                id="meal-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
             </div>
           </div>
           <DialogFooter>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Filter, Search, X, Bookmark, Trash2 } from "lucide-react";
+import { Filter, Search, X, Bookmark, Trash2, Target } from "lucide-react";
 import { CUISINES, DIFFICULTIES, DIETARY_LABELS } from "@/lib/validations/recipe";
 import { createSavedFilterAction, deleteSavedFilterAction } from "@/app/(app)/categories/actions";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const FILTER_KEYS = ["q", "cuisine", "difficulty", "dietary", "maxTime", "minProtein", "maxCalories", "tag"];
+const FILTER_KEYS = [
+  "q",
+  "cuisine",
+  "difficulty",
+  "dietary",
+  "maxTime",
+  "minProtein",
+  "maxCalories",
+  "tag",
+];
 
 type SavedFilter = { id: string; name: string; filter: Record<string, string> };
 
@@ -35,10 +44,13 @@ export function RecipeSearchBar({
   tags,
   savedFilters,
   householdId,
+  nutritionTargets,
 }: {
   tags: { id: string; name: string }[];
   savedFilters: SavedFilter[];
   householdId: string | null;
+  /** Per-meal calorie/protein split (target ÷ 4) from the signed-in user's own nutrition goals, if set. */
+  nutritionTargets: { maxCaloriesPerMeal: number | null; minProteinPerMeal: number | null } | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -86,6 +98,32 @@ export function RecipeSearchBar({
 
   const selectedDietary = searchParams.get("dietary")?.split(",").filter(Boolean) ?? [];
 
+  const fitsTargetsActive =
+    !!nutritionTargets &&
+    (nutritionTargets.maxCaloriesPerMeal == null ||
+      searchParams.get("maxCalories") === String(nutritionTargets.maxCaloriesPerMeal)) &&
+    (nutritionTargets.minProteinPerMeal == null ||
+      searchParams.get("minProtein") === String(nutritionTargets.minProteinPerMeal)) &&
+    (nutritionTargets.maxCaloriesPerMeal != null || nutritionTargets.minProteinPerMeal != null);
+
+  function toggleFitsTargets() {
+    if (!nutritionTargets) return;
+    if (fitsTargetsActive) {
+      updateParams({ maxCalories: null, minProtein: null });
+    } else {
+      updateParams({
+        maxCalories:
+          nutritionTargets.maxCaloriesPerMeal != null
+            ? String(nutritionTargets.maxCaloriesPerMeal)
+            : null,
+        minProtein:
+          nutritionTargets.minProteinPerMeal != null
+            ? String(nutritionTargets.minProteinPerMeal)
+            : null,
+      });
+    }
+  }
+
   return (
     <div className="flex items-center gap-2">
       <div className="relative flex-1">
@@ -99,6 +137,17 @@ export function RecipeSearchBar({
           className="pl-8"
         />
       </div>
+      {nutritionTargets ? (
+        <Button
+          type="button"
+          variant={fitsTargetsActive ? "default" : "outline"}
+          onClick={toggleFitsTargets}
+          title="Filter by your own per-meal calorie/protein split, from Health & Fitness → Goals"
+        >
+          <Target className="h-4 w-4" />
+          Fits my targets
+        </Button>
+      ) : null}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger render={<Button variant="outline" />}>
           <Filter className="h-4 w-4" />
@@ -142,7 +191,9 @@ export function RecipeSearchBar({
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Any">
-                    {(value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "Any")}
+                    {(value: string) =>
+                      value ? value.charAt(0).toUpperCase() + value.slice(1) : "Any"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -194,7 +245,10 @@ export function RecipeSearchBar({
               <div className="grid grid-cols-2 gap-1.5">
                 {DIETARY_LABELS.map((label) => (
                   <label key={label} className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={selectedDietary.includes(label)} onCheckedChange={() => toggleDietary(label)} />
+                    <Checkbox
+                      checked={selectedDietary.includes(label)}
+                      onCheckedChange={() => toggleDietary(label)}
+                    />
                     {label}
                   </label>
                 ))}
@@ -204,7 +258,10 @@ export function RecipeSearchBar({
             {tags.length > 0 ? (
               <div className="space-y-2">
                 <Label>Tag</Label>
-                <Select value={searchParams.get("tag") ?? ""} onValueChange={(v) => updateParams({ tag: v || null })}>
+                <Select
+                  value={searchParams.get("tag") ?? ""}
+                  onValueChange={(v) => updateParams({ tag: v || null })}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Any">
                       {(value: string) => tags.find((t) => t.id === value)?.name ?? "Any"}
@@ -259,7 +316,12 @@ export function RecipeSearchBar({
                     placeholder="Name this search…"
                     className="h-8 flex-1"
                   />
-                  <Button type="button" size="sm" onClick={handleSaveFilter} disabled={!saveName.trim()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleSaveFilter}
+                    disabled={!saveName.trim()}
+                  >
                     Save
                   </Button>
                 </div>
