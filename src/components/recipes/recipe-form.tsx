@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Heading, Plus, Trash2 } from "lucide-react";
 import {
   recipeFormSchema,
   type RecipeFormValues,
@@ -64,8 +64,8 @@ export function RecipeForm({
       dietary_labels: [],
       dietary_labels_verified: [],
       tag_ids: [],
-      ingredients: [{ ingredient_name: "" }],
-      steps: [{ instruction: "" }],
+      ingredients: [{ ingredient_name: "", is_section_header: false }],
+      steps: [{ instruction: "", is_section_header: false }],
       ...defaultValues,
     },
   });
@@ -496,145 +496,251 @@ export function RecipeForm({
       <Card>
         <CardHeader>
           <CardTitle>Ingredients</CardTitle>
-          <CardDescription>Add every ingredient with its quantity and unit.</CardDescription>
+          <CardDescription>
+            Add every ingredient with its quantity and unit. For a recipe with multiple
+            components (e.g. a pastry and a filling made separately), use &quot;Add section&quot;
+            to split the list with a heading.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {ingredients.fields.map((field, index) => (
-            <div key={field.id} className="flex items-start gap-2 rounded-lg border p-3">
-              <GripVertical className="mt-2.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_90px_100px_1fr]">
-                <IngredientAutocomplete
-                  value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
-                  linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
-                  householdId={
-                    visibility === "household" ? (form.watch("household_id") ?? null) : null
-                  }
-                  onChange={(name, id) => {
-                    form.setValue(`ingredients.${index}.ingredient_name`, name);
-                    form.setValue(`ingredients.${index}.ingredient_id`, id);
-                  }}
-                />
-                <Input
-                  type="number"
-                  step="any"
-                  placeholder="Qty"
-                  {...form.register(`ingredients.${index}.quantity` as const)}
-                />
-                <Select
-                  value={form.watch(`ingredients.${index}.unit`) ?? ""}
-                  onValueChange={(v) =>
-                    form.setValue(
-                      `ingredients.${index}.unit`,
-                      v as RecipeFormValues["ingredients"][number]["unit"],
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Unit">
-                      {(value: (typeof MEASUREMENT_UNITS)[number] | null) =>
-                        value ? UNIT_LABELS[value] : "Unit"
+          {ingredients.fields.map((field, index) => {
+            const isHeader = form.watch(`ingredients.${index}.is_section_header`);
+            return (
+              <div key={field.id} className="flex items-start gap-2 rounded-lg border p-3">
+                <div className="mt-1 flex shrink-0 flex-col">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={index === 0}
+                    onClick={() => ingredients.move(index, index - 1)}
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={index === ingredients.fields.length - 1}
+                    onClick={() => ingredients.move(index, index + 1)}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {isHeader ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <Heading className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <Input
+                      placeholder="Section name, e.g. Black Sesame Paste"
+                      className="font-medium"
+                      {...form.register(`ingredients.${index}.ingredient_name` as const)}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_90px_100px_1fr]">
+                    <IngredientAutocomplete
+                      value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
+                      linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
+                      householdId={
+                        visibility === "household" ? (form.watch("household_id") ?? null) : null
                       }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEASUREMENT_UNITS.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {UNIT_LABELS[u]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Prep note, e.g. finely chopped"
-                  {...form.register(`ingredients.${index}.preparation_note` as const)}
-                />
+                      onChange={(name, id) => {
+                        form.setValue(`ingredients.${index}.ingredient_name`, name);
+                        form.setValue(`ingredients.${index}.ingredient_id`, id);
+                      }}
+                    />
+                    <Input
+                      type="number"
+                      step="any"
+                      placeholder="Qty"
+                      {...form.register(`ingredients.${index}.quantity` as const)}
+                    />
+                    <Select
+                      value={form.watch(`ingredients.${index}.unit`) ?? ""}
+                      onValueChange={(v) =>
+                        form.setValue(
+                          `ingredients.${index}.unit`,
+                          v as RecipeFormValues["ingredients"][number]["unit"],
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Unit">
+                          {(value: (typeof MEASUREMENT_UNITS)[number] | null) =>
+                            value ? UNIT_LABELS[value] : "Unit"
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MEASUREMENT_UNITS.map((u) => (
+                          <SelectItem key={u} value={u}>
+                            {UNIT_LABELS[u]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="Prep note, e.g. finely chopped"
+                      {...form.register(`ingredients.${index}.preparation_note` as const)}
+                    />
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  disabled={ingredients.fields.length <= 1}
+                  onClick={() => ingredients.remove(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                disabled={ingredients.fields.length <= 1}
-                onClick={() => ingredients.remove(index)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+            );
+          })}
           {form.formState.errors.ingredients?.message ? (
             <p className="text-xs text-destructive">{form.formState.errors.ingredients.message}</p>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => ingredients.append({ ingredient_name: "" })}
-          >
-            <Plus className="h-4 w-4" />
-            Add ingredient
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => ingredients.append({ ingredient_name: "", is_section_header: false })}
+            >
+              <Plus className="h-4 w-4" />
+              Add ingredient
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => ingredients.append({ ingredient_name: "", is_section_header: true })}
+            >
+              <Heading className="h-4 w-4" />
+              Add section
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Instructions</CardTitle>
-          <CardDescription>Add each step in order.</CardDescription>
+          <CardDescription>
+            Add each step in order. Use &quot;Add section&quot; to split instructions for a
+            recipe with multiple components — numbering restarts after each heading.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {steps.fields.map((field, index) => (
-            <div key={field.id} className="flex items-start gap-2 rounded-lg border p-3">
-              <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                {index + 1}
-              </span>
-              <div className="flex-1 space-y-2">
-                <Textarea
-                  placeholder="What to do in this step"
-                  rows={2}
-                  {...form.register(`steps.${index}.instruction` as const)}
-                />
-                <div className="grid gap-2 sm:grid-cols-4">
-                  <Input
-                    type="number"
-                    placeholder="Duration (min)"
-                    {...form.register(`steps.${index}.duration_minutes` as const)}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Temp (°C)"
-                    {...form.register(`steps.${index}.temperature_celsius` as const)}
-                  />
-                  <Input
-                    placeholder="Equipment"
-                    {...form.register(`steps.${index}.equipment` as const)}
-                  />
-                  <Input placeholder="Tip" {...form.register(`steps.${index}.tip` as const)} />
+          {(() => {
+            let stepNumber = 0;
+            return steps.fields.map((field, index) => {
+              const isHeader = form.watch(`steps.${index}.is_section_header`);
+              if (isHeader) stepNumber = 0;
+              else stepNumber += 1;
+              return (
+                <div key={field.id} className="flex items-start gap-2 rounded-lg border p-3">
+                  <div className="mt-1 flex shrink-0 flex-col">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={index === 0}
+                      onClick={() => steps.move(index, index - 1)}
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={index === steps.fields.length - 1}
+                      onClick={() => steps.move(index, index + 1)}
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {isHeader ? (
+                    <div className="flex flex-1 items-center gap-2">
+                      <Heading className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Input
+                        placeholder="Section name, e.g. Ice Cream"
+                        className="font-medium"
+                        {...form.register(`steps.${index}.instruction` as const)}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <span className="mt-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                        {stepNumber}
+                      </span>
+                      <div className="flex-1 space-y-2">
+                        <Textarea
+                          placeholder="What to do in this step"
+                          rows={2}
+                          {...form.register(`steps.${index}.instruction` as const)}
+                        />
+                        <div className="grid gap-2 sm:grid-cols-4">
+                          <Input
+                            type="number"
+                            placeholder="Duration (min)"
+                            {...form.register(`steps.${index}.duration_minutes` as const)}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Temp (°C)"
+                            {...form.register(`steps.${index}.temperature_celsius` as const)}
+                          />
+                          <Input
+                            placeholder="Equipment"
+                            {...form.register(`steps.${index}.equipment` as const)}
+                          />
+                          <Input
+                            placeholder="Tip"
+                            {...form.register(`steps.${index}.tip` as const)}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    disabled={steps.fields.length <= 1}
+                    onClick={() => steps.remove(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                disabled={steps.fields.length <= 1}
-                onClick={() => steps.remove(index)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+              );
+            });
+          })()}
           {form.formState.errors.steps?.message ? (
             <p className="text-xs text-destructive">{form.formState.errors.steps.message}</p>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => steps.append({ instruction: "" })}
-          >
-            <Plus className="h-4 w-4" />
-            Add step
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => steps.append({ instruction: "", is_section_header: false })}
+            >
+              <Plus className="h-4 w-4" />
+              Add step
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => steps.append({ instruction: "", is_section_header: true })}
+            >
+              <Heading className="h-4 w-4" />
+              Add section
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

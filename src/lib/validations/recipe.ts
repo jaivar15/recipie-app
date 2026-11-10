@@ -112,6 +112,8 @@ export const recipeIngredientSchema = z.object({
   unit: z.enum(MEASUREMENT_UNITS).optional(),
   preparation_note: z.string().trim().optional(),
   brand: z.string().trim().optional(),
+  /** True for a section header row (e.g. "Black Sesame Paste") — ingredient_name is the label, nothing else applies. */
+  is_section_header: z.boolean().default(false),
 });
 export type RecipeIngredientInput = z.infer<typeof recipeIngredientSchema>;
 
@@ -121,6 +123,8 @@ export const recipeStepSchema = z.object({
   temperature_celsius: numberFromInput,
   equipment: z.string().trim().optional(),
   tip: z.string().trim().optional(),
+  /** True for a section header row (e.g. "Ice Cream") — instruction is the label, not a numbered step. */
+  is_section_header: z.boolean().default(false),
 });
 export type RecipeStepInput = z.infer<typeof recipeStepSchema>;
 

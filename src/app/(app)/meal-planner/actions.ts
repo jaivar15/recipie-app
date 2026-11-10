@@ -41,7 +41,7 @@ export async function addMealPlanEntryAction(
     servings: number;
     notes: string;
     memberIds: string[];
-  }
+  },
 ) {
   const ctx = await requireHouseholdContext();
   if (!ctx.activeHousehold) throw new Error("No active household");
@@ -75,7 +75,7 @@ export async function addMealPlanEntryAction(
         meal_plan_entry_id: createdEntry.id,
         user_id: userId,
         portions: 1,
-      }))
+      })),
     );
     if (portionsError) throw new Error(portionsError.message);
   }
@@ -90,7 +90,12 @@ export async function deleteMealPlanEntryAction(entryId: string) {
   revalidatePath("/meal-planner");
 }
 
-type RecipeIngredientRow = { ingredient_name: string; quantity: number | null; unit: string | null };
+type RecipeIngredientRow = {
+  ingredient_name: string;
+  quantity: number | null;
+  unit: string | null;
+  is_section_header: boolean;
+};
 
 export async function generateShoppingListFromPlanAction(mealPlanId: string, weekLabel: string) {
   const ctx = await requireHouseholdContext();
@@ -99,23 +104,30 @@ export async function generateShoppingListFromPlanAction(mealPlanId: string, wee
   const supabase = await createClient();
   const { data: entries, error } = await supabase
     .from("meal_plan_entries")
-    .select("servings, recipes(servings, recipe_ingredients(ingredient_name, quantity, unit))")
+    .select(
+      "servings, recipes(servings, recipe_ingredients(ingredient_name, quantity, unit, is_section_header))",
+    )
     .eq("meal_plan_id", mealPlanId);
   if (error) throw new Error(error.message);
 
   // Aggregate by (name, unit) — quantities in different units for the same
   // ingredient are kept as separate lines rather than guessing a conversion.
-  const aggregated = new Map<string, { name: string; unit: string | null; quantity: number | null }>();
+  const aggregated = new Map<
+    string,
+    { name: string; unit: string | null; quantity: number | null }
+  >();
   for (const entry of entries ?? []) {
     const recipe = entry.recipes;
     if (!recipe) continue;
     for (const ing of recipe.recipe_ingredients as RecipeIngredientRow[]) {
+      if (ing.is_section_header) continue;
       const scaledQty =
         ing.quantity != null ? scaleQuantity(ing.quantity, recipe.servings, entry.servings) : null;
       const key = `${ing.ingredient_name.toLowerCase()}::${ing.unit ?? ""}`;
       const existing = aggregated.get(key);
       if (existing) {
-        existing.quantity = existing.quantity != null && scaledQty != null ? existing.quantity + scaledQty : null;
+        existing.quantity =
+          existing.quantity != null && scaledQty != null ? existing.quantity + scaledQty : null;
       } else {
         aggregated.set(key, { name: ing.ingredient_name, unit: ing.unit, quantity: scaledQty });
       }
@@ -128,7 +140,11 @@ export async function generateShoppingListFromPlanAction(mealPlanId: string, wee
 
   const { data: list, error: listError } = await supabase
     .from("shopping_lists")
-    .insert({ household_id: ctx.activeHousehold.householdId, name: `Shopping — ${weekLabel}`, created_by: user?.id ?? null })
+    .insert({
+      household_id: ctx.activeHousehold.householdId,
+      name: `Shopping — ${weekLabel}`,
+      created_by: user?.id ?? null,
+    })
     .select("id")
     .single();
   if (listError) throw new Error(listError.message);
@@ -143,7 +159,7 @@ export async function generateShoppingListFromPlanAction(mealPlanId: string, wee
         unit: item.unit as Database["public"]["Enums"]["measurement_unit"] | null,
         added_by: user?.id ?? null,
         sort_order: i,
-      }))
+      })),
     );
     if (itemsError) throw new Error(itemsError.message);
   }

@@ -23,7 +23,7 @@ const RECIPE_CARD_FIELDS = `
   id, title, visibility, difficulty, cuisine, prep_time_minutes, cook_time_minutes, servings, author_name,
   meal_type, dietary_labels, deleted_at, recipe_images(storage_path, is_primary),
   recipe_tags(tag_id),
-  recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
+  recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, is_section_header,
     ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
       fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
       ingredient_measurement_conversions(unit, grams_per_unit)))
@@ -49,6 +49,7 @@ type RawRecipeRow = {
     quantity: number | null;
     unit: MeasurementUnit | null;
     nutrition_override: NutrientSet | null;
+    is_section_header: boolean;
     ingredients: {
       nutrition_reference_amount: number;
       nutrition_reference_unit: "g" | "ml";
@@ -93,7 +94,9 @@ function matchesFilters(r: RawRecipeRow, filters: Filters): boolean {
     if (total === 0 || total > filters.maxTime) return false;
   }
   if (filters.minProtein != null || filters.maxCalories != null) {
-    const inputs: RecipeIngredientForCalc[] = r.recipe_ingredients.map((ing) => ({
+    const inputs: RecipeIngredientForCalc[] = r.recipe_ingredients
+      .filter((ing) => !ing.is_section_header)
+      .map((ing) => ({
       id: ing.ingredient_name,
       ingredientName: ing.ingredient_name,
       quantity: ing.quantity,

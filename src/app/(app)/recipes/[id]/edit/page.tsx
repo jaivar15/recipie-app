@@ -18,9 +18,9 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
        prep_time_minutes, cook_time_minutes, resting_time_minutes, servings, serving_size,
        finished_weight_grams, difficulty, cuisine, meal_type, cooking_method, equipment,
        dietary_labels, dietary_labels_verified,
-       recipe_ingredients(ingredient_name, quantity, unit, preparation_note, brand, position, ingredient_id),
-       recipe_steps(instruction, duration_minutes, temperature_celsius, equipment, tip, position),
-       recipe_tags(tag_id)`
+       recipe_ingredients(ingredient_name, quantity, unit, preparation_note, brand, position, ingredient_id, is_section_header),
+       recipe_steps(instruction, duration_minutes, temperature_celsius, equipment, tip, position, is_section_header),
+       recipe_tags(tag_id)`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -80,6 +80,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
         unit: i.unit ?? undefined,
         preparation_note: i.preparation_note ?? "",
         brand: i.brand ?? "",
+        is_section_header: i.is_section_header,
       })),
     steps: [...recipe.recipe_steps]
       .sort((a, b) => a.position - b.position)
@@ -89,6 +90,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
         temperature_celsius: s.temperature_celsius ?? undefined,
         equipment: s.equipment ?? "",
         tip: s.tip ?? "",
+        is_section_header: s.is_section_header,
       })),
   };
 

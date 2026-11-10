@@ -15,8 +15,8 @@ export default async function RecipePrintPage({ params }: { params: Promise<{ id
     .select(
       `title, description, author_name, source, prep_time_minutes, cook_time_minutes, servings, serving_size,
        difficulty, cuisine,
-       recipe_ingredients(position, ingredient_name, quantity, unit, preparation_note, brand),
-       recipe_steps(position, instruction, duration_minutes, tip)`
+       recipe_ingredients(position, ingredient_name, quantity, unit, preparation_note, brand, is_section_header),
+       recipe_steps(position, instruction, duration_minutes, tip, is_section_header)`,
     )
     .eq("id", id)
     .maybeSingle();
@@ -35,7 +35,9 @@ export default async function RecipePrintPage({ params }: { params: Promise<{ id
       </div>
 
       <h1 className="text-3xl font-semibold">{recipe.title}</h1>
-      {recipe.description ? <p className="mt-2 text-muted-foreground">{recipe.description}</p> : null}
+      {recipe.description ? (
+        <p className="mt-2 text-muted-foreground">{recipe.description}</p>
+      ) : null}
       <p className="mt-2 text-sm text-muted-foreground">
         {recipe.author_name ? `By ${recipe.author_name}` : null}
         {recipe.source ? ` · ${recipe.source}` : ""}
@@ -45,8 +47,13 @@ export default async function RecipePrintPage({ params }: { params: Promise<{ id
         {recipe.prep_time_minutes ? <span>Prep: {recipe.prep_time_minutes} min</span> : null}
         {recipe.cook_time_minutes ? <span>Cook: {recipe.cook_time_minutes} min</span> : null}
         {totalTime ? <span>Total: {totalTime} min</span> : null}
-        <span>Servings: {recipe.servings}{recipe.serving_size ? ` (${recipe.serving_size})` : ""}</span>
-        {recipe.difficulty ? <span className="capitalize">Difficulty: {recipe.difficulty}</span> : null}
+        <span>
+          Servings: {recipe.servings}
+          {recipe.serving_size ? ` (${recipe.serving_size})` : ""}
+        </span>
+        {recipe.difficulty ? (
+          <span className="capitalize">Difficulty: {recipe.difficulty}</span>
+        ) : null}
         {recipe.cuisine ? <span>Cuisine: {recipe.cuisine}</span> : null}
       </div>
 
@@ -54,33 +61,57 @@ export default async function RecipePrintPage({ params }: { params: Promise<{ id
         <div className="sm:col-span-1">
           <h2 className="mb-2 text-lg font-semibold">Ingredients</h2>
           <ul className="space-y-1.5 text-sm">
-            {ingredients.map((ing, i) => (
-              <li key={i}>
-                {ing.quantity != null ? (
-                  <span className="font-medium">
-                    {ing.quantity}
-                    {ing.unit ? UNIT_LABELS[ing.unit] : ""}{" "}
-                  </span>
-                ) : null}
-                {ing.ingredient_name}
-                {ing.preparation_note ? `, ${ing.preparation_note}` : ""}
-              </li>
-            ))}
+            {ingredients.map((ing, i) =>
+              ing.is_section_header ? (
+                <li key={i} className="pt-2 font-semibold first:pt-0">
+                  {ing.ingredient_name}
+                </li>
+              ) : (
+                <li key={i}>
+                  {ing.quantity != null ? (
+                    <span className="font-medium">
+                      {ing.quantity}
+                      {ing.unit ? UNIT_LABELS[ing.unit] : ""}{" "}
+                    </span>
+                  ) : null}
+                  {ing.ingredient_name}
+                  {ing.preparation_note ? `, ${ing.preparation_note}` : ""}
+                </li>
+              ),
+            )}
           </ul>
         </div>
         <div className="sm:col-span-2">
           <h2 className="mb-2 text-lg font-semibold">Instructions</h2>
           <ol className="space-y-3 text-sm">
-            {steps.map((step, i) => (
-              <li key={i} className="flex gap-3">
-                <span className="font-semibold">{i + 1}.</span>
-                <span>
-                  {step.instruction}
-                  {step.duration_minutes ? ` (${step.duration_minutes} min)` : ""}
-                  {step.tip ? <span className="block text-muted-foreground italic">Tip: {step.tip}</span> : null}
-                </span>
-              </li>
-            ))}
+            {(() => {
+              let stepNumber = 0;
+              return steps.map((step, i) => {
+                if (step.is_section_header) {
+                  stepNumber = 0;
+                  return (
+                    <li key={i} className="pt-2 font-semibold first:pt-0">
+                      {step.instruction}
+                    </li>
+                  );
+                }
+                stepNumber += 1;
+                return (
+                  <li key={i} className="flex gap-3">
+                    <span className="font-semibold">{stepNumber}.</span>
+                    <span>
+                      {step.instruction}
+                      {step.duration_minutes ? ` (${step.duration_minutes} min)` : ""}
+                      {step.tip ? (
+                        <span className="block text-muted-foreground italic">
+                          Tip: {step.tip}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                );
+              });
+            })()}
           </ol>
         </div>
       </div>

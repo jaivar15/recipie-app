@@ -17,6 +17,7 @@ export type ScalableIngredient = {
   unit: MeasurementUnit | null;
   preparationNote: string | null;
   brand: string | null;
+  isSectionHeader: boolean;
 };
 
 export function ServingScaler({
@@ -49,7 +50,12 @@ export function ServingScaler({
           <span className="w-28 text-center text-sm tabular-nums">
             {formatQuantity(targetServings)} serving{targetServings === 1 ? "" : "s"}
           </span>
-          <Button type="button" variant="outline" size="icon-sm" onClick={() => setTargetServings((s) => s + 0.5)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            onClick={() => setTargetServings((s) => s + 0.5)}
+          >
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -57,18 +63,33 @@ export function ServingScaler({
       <CardContent>
         {scaled ? (
           <p className="mb-3 text-xs text-muted-foreground">
-            Scaled {multiplier.toFixed(2).replace(/\.?0+$/, "")}× from the original {originalServings}
-            {servingSize ? ` (${servingSize})` : ""}. Edit the recipe to save new amounts permanently.
+            Scaled {multiplier.toFixed(2).replace(/\.?0+$/, "")}× from the original{" "}
+            {originalServings}
+            {servingSize ? ` (${servingSize})` : ""}. Edit the recipe to save new amounts
+            permanently.
           </p>
         ) : null}
         <ul className="space-y-2 text-sm">
           {ingredients.map((ing) => {
+            if (ing.isSectionHeader) {
+              return (
+                <li key={ing.id} className="pt-2 first:pt-0">
+                  <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    {ing.name}
+                  </p>
+                </li>
+              );
+            }
             const displayQty =
-              ing.quantity != null ? scaleQuantity(ing.quantity, originalServings, targetServings) : null;
+              ing.quantity != null
+                ? scaleQuantity(ing.quantity, originalServings, targetServings)
+                : null;
             return (
               <li key={ing.id} className="flex items-baseline gap-2">
                 <span className="w-20 shrink-0 font-medium tabular-nums">
-                  {displayQty != null ? `${formatQuantity(displayQty)}${ing.unit ? UNIT_LABELS[ing.unit] : ""}` : ""}
+                  {displayQty != null
+                    ? `${formatQuantity(displayQty)}${ing.unit ? UNIT_LABELS[ing.unit] : ""}`
+                    : ""}
                 </span>
                 <span>
                   {ing.name}

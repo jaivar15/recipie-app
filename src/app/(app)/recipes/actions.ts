@@ -40,6 +40,7 @@ function toRpcPayload(values: RecipeFormValues) {
       unit: i.unit ?? "",
       preparation_note: i.preparation_note ?? "",
       brand: i.brand ?? "",
+      is_section_header: i.is_section_header,
     })),
     steps: values.steps.map((s) => ({
       instruction: s.instruction,
@@ -47,6 +48,7 @@ function toRpcPayload(values: RecipeFormValues) {
       temperature_celsius: s.temperature_celsius ?? "",
       equipment: s.equipment ?? "",
       tip: s.tip ?? "",
+      is_section_header: s.is_section_header,
     })),
   };
 }
@@ -130,13 +132,14 @@ export async function restoreRecipeAction(recipeId: string) {
 export async function duplicateRecipeAction(
   recipeId: string,
   targetVisibility: RecipeVisibility,
-  targetHouseholdId: string | null
+  targetHouseholdId: string | null,
 ) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("duplicate_recipe", {
     p_recipe_id: recipeId,
     p_target_visibility: targetVisibility,
-    p_target_household_id: targetVisibility === "household" ? (targetHouseholdId ?? undefined) : undefined,
+    p_target_household_id:
+      targetVisibility === "household" ? (targetHouseholdId ?? undefined) : undefined,
   });
   if (error) throw new Error(error.message);
   revalidatePath("/recipes");
@@ -187,7 +190,7 @@ export async function savePersonalNoteAction(recipeId: string, note: string) {
       .from("recipe_personal_notes")
       .upsert(
         { recipe_id: recipeId, user_id: user.id, note: note.trim() },
-        { onConflict: "recipe_id,user_id" }
+        { onConflict: "recipe_id,user_id" },
       );
     if (error) throw new Error(error.message);
   }
@@ -198,7 +201,7 @@ export async function savePersonalNoteAction(recipeId: string, note: string) {
 export async function registerRecipeImageAction(
   recipeId: string,
   storagePath: string,
-  isPrimary: boolean
+  isPrimary: boolean,
 ) {
   const supabase = await createClient();
 
@@ -216,7 +219,9 @@ export async function registerRecipeImageAction(
 
 export async function deleteRecipeImageAction(imageId: string, storagePath: string) {
   const supabase = await createClient();
-  const { error: storageError } = await supabase.storage.from("recipe-images").remove([storagePath]);
+  const { error: storageError } = await supabase.storage
+    .from("recipe-images")
+    .remove([storagePath]);
   if (storageError) throw new Error(storageError.message);
 
   const { error } = await supabase.from("recipe_images").delete().eq("id", imageId);
@@ -228,7 +233,10 @@ export async function deleteRecipeImageAction(imageId: string, storagePath: stri
 export async function setPrimaryRecipeImageAction(recipeId: string, imageId: string) {
   const supabase = await createClient();
   await supabase.from("recipe_images").update({ is_primary: false }).eq("recipe_id", recipeId);
-  const { error } = await supabase.from("recipe_images").update({ is_primary: true }).eq("id", imageId);
+  const { error } = await supabase
+    .from("recipe_images")
+    .update({ is_primary: true })
+    .eq("id", imageId);
   if (error) throw new Error(error.message);
   revalidatePath(`/recipes/${recipeId}`);
 }

@@ -1260,6 +1260,7 @@ export type Database = {
           id: string;
           ingredient_id: string | null;
           ingredient_name: string;
+          is_section_header: boolean;
           nutrition_override: Json | null;
           position: number;
           preparation_note: string | null;
@@ -1274,6 +1275,7 @@ export type Database = {
           id?: string;
           ingredient_id?: string | null;
           ingredient_name: string;
+          is_section_header?: boolean;
           nutrition_override?: Json | null;
           position?: number;
           preparation_note?: string | null;
@@ -1287,6 +1289,7 @@ export type Database = {
           id?: string;
           ingredient_id?: string | null;
           ingredient_name?: string;
+          is_section_header?: boolean;
           nutrition_override?: Json | null;
           position?: number;
           preparation_note?: string | null;
@@ -1362,6 +1365,7 @@ export type Database = {
           id: string;
           image_storage_path: string | null;
           instruction: string;
+          is_section_header: boolean;
           position: number;
           recipe_id: string;
           temperature_celsius: number | null;
@@ -1375,6 +1379,7 @@ export type Database = {
           id?: string;
           image_storage_path?: string | null;
           instruction: string;
+          is_section_header?: boolean;
           position?: number;
           recipe_id: string;
           temperature_celsius?: number | null;
@@ -1387,6 +1392,7 @@ export type Database = {
           id?: string;
           image_storage_path?: string | null;
           instruction?: string;
+          is_section_header?: boolean;
           position?: number;
           recipe_id?: string;
           temperature_celsius?: number | null;

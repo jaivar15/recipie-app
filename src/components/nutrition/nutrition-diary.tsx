@@ -81,7 +81,7 @@ export async function NutritionDiary({
     .from("meal_plan_entries")
     .select(
       `entry_date, servings, recipe_id,
-       recipes(servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
+       recipes(servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, is_section_header,
          ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
            ingredient_measurement_conversions(unit, grams_per_unit)))),
        meal_plan_member_portions(user_id, portions),
@@ -104,7 +104,9 @@ export async function NutritionDiary({
     const totalPortions = portionRows.reduce((sum, p) => sum + Number(p.portions), 0);
     if (totalPortions <= 0) continue;
 
-    const inputs: RecipeIngredientForCalc[] = e.recipes.recipe_ingredients.map((ing) => ({
+    const inputs: RecipeIngredientForCalc[] = e.recipes.recipe_ingredients
+      .filter((ing) => !ing.is_section_header)
+      .map((ing) => ({
       id: ing.ingredient_name,
       ingredientName: ing.ingredient_name,
       quantity: ing.quantity,

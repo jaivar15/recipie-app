@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 
 const QUERY_FIELDS = `
   id, title, servings,
-  recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
+  recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, is_section_header,
     ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
       fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
       ingredient_measurement_conversions(unit, grams_per_unit)))
@@ -53,7 +53,9 @@ export default async function NutritionPage({
         .order("title");
 
   const rows: RecipeNutritionRow[] = (recipes ?? []).map((r) => {
-    const inputs: RecipeIngredientForCalc[] = r.recipe_ingredients.map((ing) => ({
+    const inputs: RecipeIngredientForCalc[] = r.recipe_ingredients
+      .filter((ing) => !ing.is_section_header)
+      .map((ing) => ({
       id: ing.ingredient_name,
       ingredientName: ing.ingredient_name,
       quantity: ing.quantity,

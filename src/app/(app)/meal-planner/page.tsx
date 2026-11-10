@@ -165,7 +165,7 @@ export default async function MealPlannerPage({
       .from("meal_plan_entries")
       .select(
         `id, entry_date, meal_type, servings, custom_title, recipe_id,
-         recipes(title, servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
+         recipes(title, servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, is_section_header,
            ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
              ingredient_measurement_conversions(unit, grams_per_unit)))),
          meal_plan_member_portions(user_id, profiles!meal_plan_member_portions_user_id_fkey(display_name))`,
@@ -178,7 +178,9 @@ export default async function MealPlannerPage({
       let macros: Macros = EMPTY_MACROS;
 
       if (e.recipes) {
-        const inputs: RecipeIngredientForCalc[] = e.recipes.recipe_ingredients.map((ing) => ({
+        const inputs: RecipeIngredientForCalc[] = e.recipes.recipe_ingredients
+          .filter((ing) => !ing.is_section_header)
+          .map((ing) => ({
           id: ing.ingredient_name,
           ingredientName: ing.ingredient_name,
           quantity: ing.quantity,

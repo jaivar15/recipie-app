@@ -83,13 +83,15 @@ async function insertEntryWithSnapshot(
     const { data: recipe, error: recipeError } = await supabase
       .from("recipes")
       .select(
-        "servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, energy_kj, protein_g, carbohydrate_g, fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug), ingredient_measurement_conversions(unit, grams_per_unit)))",
+        "servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, is_section_header, ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, energy_kj, protein_g, carbohydrate_g, fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug), ingredient_measurement_conversions(unit, grams_per_unit)))",
       )
       .eq("id", source.recipeId)
       .single();
     if (recipeError || !recipe) throw new Error("Recipe not found");
 
-    const inputs: RecipeIngredientForCalc[] = recipe.recipe_ingredients.map((ing) => ({
+    const inputs: RecipeIngredientForCalc[] = recipe.recipe_ingredients
+      .filter((ing) => !ing.is_section_header)
+      .map((ing) => ({
       id: ing.ingredient_name,
       ingredientName: ing.ingredient_name,
       quantity: ing.quantity,

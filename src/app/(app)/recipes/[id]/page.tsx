@@ -52,11 +52,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
        equipment, dietary_labels, dietary_labels_verified, created_at, updated_at,
        creator:profiles!recipes_created_by_fkey(display_name, avatar_url),
        editor:profiles!recipes_last_edited_by_fkey(display_name),
-       recipe_ingredients(id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id, nutrition_override,
+       recipe_ingredients(id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id, nutrition_override, is_section_header,
          ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
            fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
            ingredient_measurement_conversions(unit, grams_per_unit))),
-       recipe_steps(id, position, instruction, duration_minutes, temperature_celsius, equipment, tip),
+       recipe_steps(id, position, instruction, duration_minutes, temperature_celsius, equipment, tip, is_section_header),
        recipe_images(id, storage_path, is_primary, caption, position),
        recipe_tags(tags(id, name))`,
     )
@@ -123,9 +123,12 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
     unit: ing.unit,
     preparationNote: ing.preparation_note,
     brand: ing.brand,
+    isSectionHeader: ing.is_section_header,
   }));
 
-  const nutritionInputs: RecipeIngredientForCalc[] = ingredients.map((ing) => {
+  const nutritionInputs: RecipeIngredientForCalc[] = ingredients
+    .filter((ing) => !ing.is_section_header)
+    .map((ing) => {
     const conversions = Object.fromEntries(
       (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
         c.unit,
@@ -302,26 +305,40 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
           </CardHeader>
           <CardContent>
             <ol className="space-y-4">
-              {steps.map((step, i) => (
-                <li key={step.id} className="flex gap-3 text-sm">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-chart-2/20 text-xs font-medium text-chart-2">
-                    {i + 1}
-                  </span>
-                  <div className="space-y-1">
-                    <p>{step.instruction}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[
-                        step.duration_minutes ? `${step.duration_minutes} min` : null,
-                        step.temperature_celsius ? `${step.temperature_celsius}°C` : null,
-                        step.equipment,
-                        step.tip ? `Tip: ${step.tip}` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  </div>
-                </li>
-              ))}
+              {(() => {
+                let stepNumber = 0;
+                return steps.map((step) => {
+                  if (step.is_section_header) {
+                    stepNumber = 0;
+                    return (
+                      <li key={step.id} className="pt-1 first:pt-0">
+                        <p className="text-sm font-semibold">{step.instruction}</p>
+                      </li>
+                    );
+                  }
+                  stepNumber += 1;
+                  return (
+                    <li key={step.id} className="flex gap-3 text-sm">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-chart-2/20 text-xs font-medium text-chart-2">
+                        {stepNumber}
+                      </span>
+                      <div className="space-y-1">
+                        <p>{step.instruction}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[
+                            step.duration_minutes ? `${step.duration_minutes} min` : null,
+                            step.temperature_celsius ? `${step.temperature_celsius}°C` : null,
+                            step.equipment,
+                            step.tip ? `Tip: ${step.tip}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                });
+              })()}
             </ol>
           </CardContent>
         </Card>
