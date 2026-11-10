@@ -12,6 +12,21 @@ import {
   summarizeWeightChange,
 } from "./calculations";
 
+/**
+ * Formats a Date's LOCAL calendar date as "YYYY-MM-DD" — deliberately not
+ * `.toISOString().slice(0, 10)`, which reads the UTC calendar date and
+ * silently rolls back a day for part of the day in any positive-UTC-offset
+ * timezone. calculateAge compares against `new Date()` (local "now"), so
+ * the test's input dates must be local-dated too, or the test becomes
+ * time-of-day-flaky — this bit a real test run already.
+ */
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 describe("calculateAge", () => {
   it("returns null when no date of birth is given", () => {
     expect(calculateAge(null)).toBeNull();
@@ -21,13 +36,13 @@ describe("calculateAge", () => {
     const today = new Date();
     const turnedThirtyToday = new Date(today);
     turnedThirtyToday.setFullYear(today.getFullYear() - 30);
-    expect(calculateAge(turnedThirtyToday.toISOString().slice(0, 10))).toBe(30);
+    expect(calculateAge(toLocalDateString(turnedThirtyToday))).toBe(30);
 
     // Birthday is tomorrow — hasn't turned 30 yet this year.
     const turnsThirtyTomorrow = new Date(today);
     turnsThirtyTomorrow.setFullYear(today.getFullYear() - 30);
     turnsThirtyTomorrow.setDate(turnsThirtyTomorrow.getDate() + 1);
-    expect(calculateAge(turnsThirtyTomorrow.toISOString().slice(0, 10))).toBe(29);
+    expect(calculateAge(toLocalDateString(turnsThirtyTomorrow))).toBe(29);
   });
 });
 

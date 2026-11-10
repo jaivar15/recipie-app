@@ -823,6 +823,8 @@ export type Database = {
           id: string;
           name: string;
           notes: string | null;
+          nutrition_reference_amount: number;
+          nutrition_reference_unit: string;
           state: string | null;
           updated_at: string;
           visibility: Database["public"]["Enums"]["recipe_visibility"];
@@ -839,6 +841,8 @@ export type Database = {
           id?: string;
           name: string;
           notes?: string | null;
+          nutrition_reference_amount?: number;
+          nutrition_reference_unit?: string;
           state?: string | null;
           updated_at?: string;
           visibility: Database["public"]["Enums"]["recipe_visibility"];
@@ -854,6 +858,8 @@ export type Database = {
           id?: string;
           name?: string;
           notes?: string | null;
+          nutrition_reference_amount?: number;
+          nutrition_reference_unit?: string;
           state?: string | null;
           updated_at?: string;
           visibility?: Database["public"]["Enums"]["recipe_visibility"];

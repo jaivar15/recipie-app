@@ -1,24 +1,98 @@
 import { describe, expect, it } from "vitest";
-import { calculateRecipeNutrition, divideNutrients, multiplyNutrients, resolveGrams, type RecipeIngredientForCalc } from "./calculate";
+import {
+  calculateRecipeNutrition,
+  divideNutrients,
+  multiplyNutrients,
+  resolveReferenceAmount,
+  type RecipeIngredientForCalc,
+} from "./calculate";
 
-describe("resolveGrams", () => {
-  it("converts g and kg trivially", () => {
-    expect(resolveGrams(250, "g", {})).toBe(250);
-    expect(resolveGrams(1.5, "kg", {})).toBe(1500);
+describe("resolveReferenceAmount", () => {
+  it("converts g and kg trivially for a g-based ingredient (the default)", () => {
+    expect(resolveReferenceAmount(250, "g", {})).toBe(250);
+    expect(resolveReferenceAmount(1.5, "kg", {})).toBe(1500);
+  });
+
+  it("converts ml and l trivially for an ml-based ingredient", () => {
+    expect(resolveReferenceAmount(250, "ml", {}, "ml")).toBe(250);
+    expect(resolveReferenceAmount(1.5, "l", {}, "ml")).toBe(1500);
+  });
+
+  it("does NOT treat g/kg as trivial for an ml-based ingredient, or ml/l as trivial for a g-based one", () => {
+    expect(resolveReferenceAmount(250, "g", {}, "ml")).toBeNull();
+    expect(resolveReferenceAmount(250, "ml", {})).toBeNull();
   });
 
   it("uses an ingredient-specific conversion for other units", () => {
-    expect(resolveGrams(2, "cup", { cup: 120 })).toBe(240);
+    expect(resolveReferenceAmount(2, "cup", { cup: 120 })).toBe(240);
+    // For an ml-based ingredient the same conversion map is read as ml-per-unit.
+    expect(resolveReferenceAmount(2, "cup", { cup: 240 }, "ml")).toBe(480);
   });
 
   it("never guesses a conversion — returns null when none is known", () => {
-    expect(resolveGrams(2, "cup", {})).toBeNull();
-    expect(resolveGrams(2, "piece", { cup: 120 })).toBeNull();
+    expect(resolveReferenceAmount(2, "cup", {})).toBeNull();
+    expect(resolveReferenceAmount(2, "piece", { cup: 120 })).toBeNull();
   });
 
   it("returns null when quantity or unit is missing", () => {
-    expect(resolveGrams(null, "g", {})).toBeNull();
-    expect(resolveGrams(2, null, {})).toBeNull();
+    expect(resolveReferenceAmount(null, "g", {})).toBeNull();
+    expect(resolveReferenceAmount(2, null, {})).toBeNull();
+  });
+});
+
+describe("calculateRecipeNutrition — ml-based ingredients (e.g. milk)", () => {
+  it("scales against millilitres, not grams, for an ml-based ingredient at the default 100ml reference", () => {
+    const ingredients: RecipeIngredientForCalc[] = [
+      {
+        id: "1",
+        ingredientName: "Milk",
+        quantity: 250,
+        unit: "ml",
+        nutritionOverride: null,
+        ingredientNutrition: { calories_kcal: 42, protein_g: 3.4 },
+        nutritionReferenceUnit: "ml",
+        conversions: {},
+      },
+    ];
+    const { nutrients } = calculateRecipeNutrition(ingredients);
+    expect(nutrients.calories_kcal.value).toBe(105);
+    expect(nutrients.protein_g.value).toBe(8.5);
+  });
+
+  it("scales against a non-100 reference amount, e.g. a product labelled per 250ml", () => {
+    const ingredients: RecipeIngredientForCalc[] = [
+      {
+        id: "1",
+        ingredientName: "Milk (labelled per 250ml serving)",
+        quantity: 500,
+        unit: "ml",
+        nutritionOverride: null,
+        ingredientNutrition: { calories_kcal: 160, protein_g: 8 },
+        nutritionReferenceAmount: 250,
+        nutritionReferenceUnit: "ml",
+        conversions: {},
+      },
+    ];
+    const { nutrients } = calculateRecipeNutrition(ingredients);
+    // 500ml is 2x the 250ml the label is per, so totals double.
+    expect(nutrients.calories_kcal.value).toBe(320);
+    expect(nutrients.protein_g.value).toBe(16);
+  });
+
+  it("defaults to a 100g reference when a line omits nutritionReferenceAmount/Unit, for backward compatibility", () => {
+    const ingredients: RecipeIngredientForCalc[] = [
+      {
+        id: "1",
+        ingredientName: "Flour",
+        quantity: 200,
+        unit: "g",
+        nutritionOverride: null,
+        ingredientNutrition: { calories_kcal: 350 },
+        conversions: {},
+      },
+    ];
+    const { nutrients } = calculateRecipeNutrition(ingredients);
+    expect(nutrients.calories_kcal.value).toBe(700);
   });
 });
 

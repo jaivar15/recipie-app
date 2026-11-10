@@ -16,7 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type FoodDiaryMealType = Database["public"]["Enums"]["food_diary_meal_type"];
@@ -32,7 +38,7 @@ export function AddFoodDiaryEntryDialog({
   mealType: FoodDiaryMealType;
   mealLabel: string;
   recipes: { id: string; title: string }[];
-  ingredients: { id: string; name: string }[];
+  ingredients: { id: string; name: string; nutrition_reference_unit: "g" | "ml" }[];
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"recipe" | "ingredient" | "custom">("recipe");
@@ -47,6 +53,9 @@ export function AddFoodDiaryEntryDialog({
   const [customFat, setCustomFat] = useState("");
   const [customFibre, setCustomFibre] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const selectedIngredientUnit =
+    ingredients.find((i) => i.id === ingredientId)?.nutrition_reference_unit === "ml" ? "ml" : "grams";
 
   const canSubmit =
     mode === "recipe"
@@ -128,7 +137,9 @@ export function AddFoodDiaryEntryDialog({
         >
           <DialogHeader>
             <DialogTitle>Log {mealLabel.toLowerCase()}</DialogTitle>
-            <DialogDescription>From a recipe, a database ingredient, or a quick custom entry.</DialogDescription>
+            <DialogDescription>
+              From a recipe, a database ingredient, or a quick custom entry.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
@@ -150,7 +161,9 @@ export function AddFoodDiaryEntryDialog({
                   <Select value={recipeId} onValueChange={(v) => setRecipeId(v ?? "")}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose a recipe">
-                        {(value: string) => recipes.find((r) => r.id === value)?.title ?? "Choose a recipe"}
+                        {(value: string) =>
+                          recipes.find((r) => r.id === value)?.title ?? "Choose a recipe"
+                        }
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -172,7 +185,9 @@ export function AddFoodDiaryEntryDialog({
                     value={servings}
                     onChange={(e) => setServings(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">e.g. 1.5 servings scales the recipe&apos;s nutrition proportionally.</p>
+                  <p className="text-xs text-muted-foreground">
+                    e.g. 1.5 servings scales the recipe&apos;s nutrition proportionally.
+                  </p>
                 </div>
               </TabsContent>
 
@@ -182,7 +197,9 @@ export function AddFoodDiaryEntryDialog({
                   <Select value={ingredientId} onValueChange={(v) => setIngredientId(v ?? "")}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Choose an ingredient">
-                        {(value: string) => ingredients.find((i) => i.id === value)?.name ?? "Choose an ingredient"}
+                        {(value: string) =>
+                          ingredients.find((i) => i.id === value)?.name ?? "Choose an ingredient"
+                        }
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -195,8 +212,15 @@ export function AddFoodDiaryEntryDialog({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="diary-grams">Quantity (grams)</Label>
-                  <Input id="diary-grams" type="number" min={1} step="1" value={grams} onChange={(e) => setGrams(e.target.value)} />
+                  <Label htmlFor="diary-grams">Quantity ({selectedIngredientUnit})</Label>
+                  <Input
+                    id="diary-grams"
+                    type="number"
+                    min={1}
+                    step="1"
+                    value={grams}
+                    onChange={(e) => setGrams(e.target.value)}
+                  />
                 </div>
               </TabsContent>
 
@@ -211,28 +235,59 @@ export function AddFoodDiaryEntryDialog({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Enter whatever you know — leave the rest blank. Unknown values stay unknown, never zero.
+                  Enter whatever you know — leave the rest blank. Unknown values stay unknown, never
+                  zero.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="diary-custom-cal">Calories (kcal)</Label>
-                    <Input id="diary-custom-cal" type="number" min={0} value={customCalories} onChange={(e) => setCustomCalories(e.target.value)} />
+                    <Input
+                      id="diary-custom-cal"
+                      type="number"
+                      min={0}
+                      value={customCalories}
+                      onChange={(e) => setCustomCalories(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="diary-custom-protein">Protein (g)</Label>
-                    <Input id="diary-custom-protein" type="number" min={0} value={customProtein} onChange={(e) => setCustomProtein(e.target.value)} />
+                    <Input
+                      id="diary-custom-protein"
+                      type="number"
+                      min={0}
+                      value={customProtein}
+                      onChange={(e) => setCustomProtein(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="diary-custom-carbs">Carbs (g)</Label>
-                    <Input id="diary-custom-carbs" type="number" min={0} value={customCarbs} onChange={(e) => setCustomCarbs(e.target.value)} />
+                    <Input
+                      id="diary-custom-carbs"
+                      type="number"
+                      min={0}
+                      value={customCarbs}
+                      onChange={(e) => setCustomCarbs(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="diary-custom-fat">Fat (g)</Label>
-                    <Input id="diary-custom-fat" type="number" min={0} value={customFat} onChange={(e) => setCustomFat(e.target.value)} />
+                    <Input
+                      id="diary-custom-fat"
+                      type="number"
+                      min={0}
+                      value={customFat}
+                      onChange={(e) => setCustomFat(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="diary-custom-fibre">Fibre (g)</Label>
-                    <Input id="diary-custom-fibre" type="number" min={0} value={customFibre} onChange={(e) => setCustomFibre(e.target.value)} />
+                    <Input
+                      id="diary-custom-fibre"
+                      type="number"
+                      min={0}
+                      value={customFibre}
+                      onChange={(e) => setCustomFibre(e.target.value)}
+                    />
                   </div>
                 </div>
               </TabsContent>

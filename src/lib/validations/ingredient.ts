@@ -74,6 +74,14 @@ export const ingredientFormSchema = z.object({
   brand: z.string().trim().optional(),
   allergens: z.array(z.string()).default([]),
   notes: z.string().trim().optional(),
+  /** Which unit the nutrition below is "per" of — grams for most foods, millilitres for liquids. */
+  nutrition_reference_unit: z.enum(["g", "ml"]).default("g"),
+  /** The amount of that unit the nutrition below is "per" — usually 100, but e.g. 250 for a per-250ml-labelled product. */
+  nutrition_reference_amount: z
+    .union([z.number(), z.string()])
+    .transform((v) => (typeof v === "string" ? Number(v) : v))
+    .pipe(z.number().positive())
+    .default(100),
   nutrition: ingredientNutritionSchema.default({}),
   conversions: z.array(ingredientConversionSchema).default([]),
 });

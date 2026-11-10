@@ -13,7 +13,11 @@ import {
 import { getHouseholdContext } from "@/lib/households/context";
 import { createClient } from "@/lib/supabase/server";
 import { signRecipeImageUrls } from "@/lib/supabase/storage";
-import { calculateRecipeNutrition, type RecipeIngredientForCalc, type NutrientSet } from "@/lib/nutrition/calculate";
+import {
+  calculateRecipeNutrition,
+  type RecipeIngredientForCalc,
+  type NutrientSet,
+} from "@/lib/nutrition/calculate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +28,10 @@ import { DuplicateRecipeDialog } from "@/components/recipes/duplicate-recipe-dia
 import { AddToCollectionDialog } from "@/components/categories/add-to-collection-dialog";
 import { PersonalNoteCard } from "@/components/recipes/personal-note-card";
 import { ImageUpload } from "@/components/recipes/image-upload";
-import { RecipeImageGallery, type RecipeImageItem } from "@/components/recipes/recipe-image-gallery";
+import {
+  RecipeImageGallery,
+  type RecipeImageItem,
+} from "@/components/recipes/recipe-image-gallery";
 import { ServingScaler, type ScalableIngredient } from "@/components/recipes/serving-scaler";
 import { NutritionCard } from "@/components/nutrition/nutrition-card";
 import { ExportRecipeMenu } from "@/components/recipes/export-recipe-menu";
@@ -46,35 +53,45 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
        creator:profiles!recipes_created_by_fkey(display_name, avatar_url),
        editor:profiles!recipes_last_edited_by_fkey(display_name),
        recipe_ingredients(id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id, nutrition_override,
-         ingredients(ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
+         ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
            fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
            ingredient_measurement_conversions(unit, grams_per_unit))),
        recipe_steps(id, position, instruction, duration_minutes, temperature_celsius, equipment, tip),
        recipe_images(id, storage_path, is_primary, caption, position),
-       recipe_tags(tags(id, name))`
+       recipe_tags(tags(id, name))`,
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!recipe) notFound();
 
-  const [{ data: favourite }, { data: note }, { data: collectionRows }, imageUrlMap] = await Promise.all([
-    supabase.from("recipe_favourites").select("id").eq("recipe_id", id).eq("user_id", ctx.userId).maybeSingle(),
-    supabase
-      .from("recipe_personal_notes")
-      .select("note")
-      .eq("recipe_id", id)
-      .eq("user_id", ctx.userId)
-      .maybeSingle(),
-    ctx.activeHousehold
-      ? supabase
-          .from("collections")
-          .select("id, name, collection_recipes(recipe_id)")
-          .or(`visibility.eq.personal,household_id.eq.${ctx.activeHousehold.householdId}`)
-          .order("name")
-      : supabase.from("collections").select("id, name, collection_recipes(recipe_id)").eq("visibility", "personal").order("name"),
-    signRecipeImageUrls(recipe.recipe_images.map((i) => i.storage_path)),
-  ]);
+  const [{ data: favourite }, { data: note }, { data: collectionRows }, imageUrlMap] =
+    await Promise.all([
+      supabase
+        .from("recipe_favourites")
+        .select("id")
+        .eq("recipe_id", id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle(),
+      supabase
+        .from("recipe_personal_notes")
+        .select("note")
+        .eq("recipe_id", id)
+        .eq("user_id", ctx.userId)
+        .maybeSingle(),
+      ctx.activeHousehold
+        ? supabase
+            .from("collections")
+            .select("id, name, collection_recipes(recipe_id)")
+            .or(`visibility.eq.personal,household_id.eq.${ctx.activeHousehold.householdId}`)
+            .order("name")
+        : supabase
+            .from("collections")
+            .select("id, name, collection_recipes(recipe_id)")
+            .eq("visibility", "personal")
+            .order("name"),
+      signRecipeImageUrls(recipe.recipe_images.map((i) => i.storage_path)),
+    ]);
 
   const collectionOptions = (collectionRows ?? []).map((c) => ({
     id: c.id,
@@ -110,7 +127,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
   const nutritionInputs: RecipeIngredientForCalc[] = ingredients.map((ing) => {
     const conversions = Object.fromEntries(
-      (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+      (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
+        c.unit,
+        c.grams_per_unit,
+      ]),
     );
     return {
       id: ing.id,
@@ -119,6 +139,8 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       unit: ing.unit,
       nutritionOverride: (ing.nutrition_override as NutrientSet | null) ?? null,
       ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+      nutritionReferenceAmount: ing.ingredients?.nutrition_reference_amount,
+      nutritionReferenceUnit: ing.ingredients?.nutrition_reference_unit as "g" | "ml" | undefined,
       conversions,
     };
   });
@@ -135,7 +157,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
     .filter((img) => img.url);
 
   const totalTime =
-    (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0) + (recipe.resting_time_minutes ?? 0);
+    (recipe.prep_time_minutes ?? 0) +
+    (recipe.cook_time_minutes ?? 0) +
+    (recipe.resting_time_minutes ?? 0);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -147,7 +171,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
               {recipe.visibility === "household" ? "Household" : "Personal"}
             </Badge>
           </div>
-          {recipe.description ? <p className="max-w-2xl text-sm text-muted-foreground">{recipe.description}</p> : null}
+          {recipe.description ? (
+            <p className="max-w-2xl text-sm text-muted-foreground">{recipe.description}</p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             {recipe.author_name ? `By ${recipe.author_name} · ` : ""}
             Added by {recipe.creator?.display_name ?? "Unknown"}
@@ -172,7 +198,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
               History
             </Button>
           ) : null}
-          <Button render={<a href={`/recipes/${recipe.id}/print`} target="_blank" rel="noopener" />} variant="outline">
+          <Button
+            render={<a href={`/recipes/${recipe.id}/print`} target="_blank" rel="noopener" />}
+            variant="outline"
+          >
             <Printer className="h-4 w-4" />
             Print / PDF
           </Button>
@@ -182,7 +211,11 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {recipe.difficulty ? <Badge variant="outline" className="capitalize">{recipe.difficulty}</Badge> : null}
+        {recipe.difficulty ? (
+          <Badge variant="outline" className="capitalize">
+            {recipe.difficulty}
+          </Badge>
+        ) : null}
         {recipe.cuisine ? <Badge variant="outline">{recipe.cuisine}</Badge> : null}
         {recipe.cooking_method ? <Badge variant="outline">{recipe.cooking_method}</Badge> : null}
         {recipe.meal_type.map((mt) => (
@@ -208,21 +241,43 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
             <Badge key={rt.tags.id} variant="outline">
               #{rt.tags.name}
             </Badge>
-          ) : null
+          ) : null,
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile icon={Clock} label="Prep" value={recipe.prep_time_minutes ? `${recipe.prep_time_minutes} min` : "—"} chip="bg-chart-2/20 text-chart-2" />
-        <StatTile icon={Flame} label="Cook" value={recipe.cook_time_minutes ? `${recipe.cook_time_minutes} min` : "—"} chip="bg-chart-3/20 text-chart-3" />
-        <StatTile icon={Clock} label="Total" value={totalTime ? `${totalTime} min` : "—"} chip="bg-chart-1/20 text-chart-1" />
-        <StatTile icon={UsersIcon} label="Servings" value={`${recipe.servings}${recipe.serving_size ? ` (${recipe.serving_size})` : ""}`} chip="bg-chart-5/20 text-chart-5" />
+        <StatTile
+          icon={Clock}
+          label="Prep"
+          value={recipe.prep_time_minutes ? `${recipe.prep_time_minutes} min` : "—"}
+          chip="bg-chart-2/20 text-chart-2"
+        />
+        <StatTile
+          icon={Flame}
+          label="Cook"
+          value={recipe.cook_time_minutes ? `${recipe.cook_time_minutes} min` : "—"}
+          chip="bg-chart-3/20 text-chart-3"
+        />
+        <StatTile
+          icon={Clock}
+          label="Total"
+          value={totalTime ? `${totalTime} min` : "—"}
+          chip="bg-chart-1/20 text-chart-1"
+        />
+        <StatTile
+          icon={UsersIcon}
+          label="Servings"
+          value={`${recipe.servings}${recipe.serving_size ? ` (${recipe.serving_size})` : ""}`}
+          chip="bg-chart-5/20 text-chart-5"
+        />
       </div>
 
       {images.length > 0 || canEdit ? (
         <div className="space-y-3">
           <RecipeImageGallery recipeId={recipe.id} images={images} canEdit={canEdit} />
-          {canEdit ? <ImageUpload recipeId={recipe.id} hasPrimary={images.some((i) => i.isPrimary)} /> : null}
+          {canEdit ? (
+            <ImageUpload recipeId={recipe.id} hasPrimary={images.some((i) => i.isPrimary)} />
+          ) : null}
         </div>
       ) : null}
 
@@ -272,7 +327,10 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
         </Card>
       </div>
 
-      {(recipe.source || recipe.source_url || recipe.equipment.length > 0 || recipe.finished_weight_grams) ? (
+      {recipe.source ||
+      recipe.source_url ||
+      recipe.equipment.length > 0 ||
+      recipe.finished_weight_grams ? (
         <>
           <Separator />
           <div className="flex flex-wrap gap-x-8 gap-y-1 text-xs text-muted-foreground">
@@ -282,7 +340,9 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
                 {recipe.source_url}
               </a>
             ) : null}
-            {recipe.equipment.length > 0 ? <span>Equipment: {recipe.equipment.join(", ")}</span> : null}
+            {recipe.equipment.length > 0 ? (
+              <span>Equipment: {recipe.equipment.join(", ")}</span>
+            ) : null}
             {recipe.finished_weight_grams ? (
               <span className="flex items-center gap-1">
                 <Scale className="h-3 w-3" /> {recipe.finished_weight_grams} g finished weight

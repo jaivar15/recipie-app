@@ -14,6 +14,8 @@ export function toIngredientRpcPayload(values: IngredientFormValues) {
       brand: values.brand ?? "",
       allergens: values.allergens,
       notes: values.notes ?? "",
+      nutrition_reference_amount: values.nutrition_reference_amount,
+      nutrition_reference_unit: values.nutrition_reference_unit,
     },
     nutrition: {
       source_id: n.source_id ?? "",

@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 type HouseholdOption = { id: string; name: string };
 
 const TEMPLATE_EXAMPLE = `${INGREDIENTS_CSV_TEMPLATE_HEADER}
-Chicken breast,Meat & poultry,raw,,,,,165,31,0,3.6,1,0,0,74,,,,,
-Brown rice,Grains & cereals,cooked,,,,,112,2.6,24,0.9,0.2,1.8,0.4,5,,,,,`;
+Chicken breast,Meat & poultry,raw,,,,,100,g,,165,31,0,3.6,1,0,0,74,,,,,,
+Brown rice,Grains & cereals,cooked,,,,,100,g,,112,2.6,24,0.9,0.2,1.8,0.4,5,,,,,,
+Milk (full cream),Dairy & eggs,,,Dairy,,,250,ml,,160,8.25,12,9,5.75,0,12,110,,,,,,`;
 
 function downloadTemplate() {
   const blob = new Blob([TEMPLATE_EXAMPLE], { type: "text/csv" });
@@ -130,8 +131,11 @@ export function ImportIngredientsForm({ households }: { households: HouseholdOpt
       />
       <p className="text-xs text-muted-foreground">
         First row must be a header. Columns: name (required), food_category, state (raw/cooked), brand,
-        allergens, alternative_names, notes, and the usual nutrition fields per 100g — any can be left blank.
-        Separate multiple allergens or alternative names with <code>;</code>.
+        allergens, alternative_names, notes, nutrition_reference_unit (<code>g</code> or{" "}
+        <code>ml</code> for liquids like milk — defaults to g), nutrition_reference_amount (usually{" "}
+        <code>100</code>, or e.g. <code>250</code> for a product labelled per 250ml — defaults to 100),
+        and the usual nutrition fields matching that amount/unit — any can be left blank. Separate
+        multiple allergens or alternative names with <code>;</code>.
       </p>
 
       {error ? (

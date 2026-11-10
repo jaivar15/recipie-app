@@ -6,6 +6,8 @@ const COLUMNS = [
   "allergens",
   "alternative_names",
   "notes",
+  "nutrition_reference_amount",
+  "nutrition_reference_unit",
   "energy_kj",
   "calories_kcal",
   "protein_g",
@@ -54,6 +56,10 @@ export type ParsedIngredientRow = {
   allergens: string[];
   alternative_names: string[];
   notes?: string;
+  /** "g" or "ml" (liquids like milk, oil, stock); defaults to "g" when blank or unrecognised. */
+  nutrition_reference_unit: "g" | "ml";
+  /** The amount of that unit the nutrition columns are "per" — defaults to 100 when blank or invalid. */
+  nutrition_reference_amount: number;
   nutrition: Record<string, string | undefined>;
 };
 
@@ -153,6 +159,11 @@ export function parseIngredientsCsv(text: string): ParseIngredientsCsvResult {
       allergens: byColumn.allergens ? splitList(byColumn.allergens) : [],
       alternative_names: byColumn.alternative_names ? splitList(byColumn.alternative_names) : [],
       notes: byColumn.notes || undefined,
+      nutrition_reference_unit: byColumn.nutrition_reference_unit?.trim().toLowerCase() === "ml" ? "ml" : "g",
+      nutrition_reference_amount:
+        byColumn.nutrition_reference_amount && Number(byColumn.nutrition_reference_amount) > 0
+          ? Number(byColumn.nutrition_reference_amount)
+          : 100,
       nutrition,
     });
   }

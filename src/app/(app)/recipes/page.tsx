@@ -24,7 +24,7 @@ const RECIPE_CARD_FIELDS = `
   dietary_labels, deleted_at, recipe_images(storage_path, is_primary),
   recipe_tags(tag_id),
   recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
-    ingredients(ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
+    ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
       fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug),
       ingredient_measurement_conversions(unit, grams_per_unit)))
 `;
@@ -49,6 +49,8 @@ type RawRecipeRow = {
     unit: MeasurementUnit | null;
     nutrition_override: NutrientSet | null;
     ingredients: {
+      nutrition_reference_amount: number;
+      nutrition_reference_unit: "g" | "ml";
       ingredient_nutrition: NutrientSet | null;
       ingredient_measurement_conversions: { unit: MeasurementUnit; grams_per_unit: number }[];
     } | null;
@@ -93,6 +95,8 @@ function matchesFilters(r: RawRecipeRow, filters: Filters): boolean {
       unit: ing.unit,
       nutritionOverride: ing.nutrition_override,
       ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+      nutritionReferenceAmount: ing.ingredients?.nutrition_reference_amount,
+      nutritionReferenceUnit: ing.ingredients?.nutrition_reference_unit,
       conversions: Object.fromEntries(
         (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
           c.unit,

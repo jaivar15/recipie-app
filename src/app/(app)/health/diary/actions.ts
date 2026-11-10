@@ -12,7 +12,11 @@ import {
   type NutrientSet,
   type RecipeIngredientForCalc,
 } from "@/lib/nutrition/calculate";
-import { computeIngredientEntryNutrition, computeRecipeEntryNutrition, toSnapshotRow } from "@/lib/health/food-diary";
+import {
+  computeIngredientEntryNutrition,
+  computeRecipeEntryNutrition,
+  toSnapshotRow,
+} from "@/lib/health/food-diary";
 
 type FoodDiaryMealType = Database["public"]["Enums"]["food_diary_meal_type"];
 
@@ -67,7 +71,11 @@ async function insertEntryWithSnapshot(
   source:
     | { sourceType: "recipe"; recipeId: string; servings: number }
     | { sourceType: "ingredient"; ingredientId: string; quantityGrams: number }
-    | { sourceType: "custom"; customFoodName: string; nutrition: Partial<Record<(typeof MACRO_KEYS)[number], number>> }
+    | {
+        sourceType: "custom";
+        customFoodName: string;
+        nutrition: Partial<Record<(typeof MACRO_KEYS)[number], number>>;
+      },
 ) {
   let nutrients: Record<NutrientKey, NutrientResult>;
 
@@ -75,7 +83,7 @@ async function insertEntryWithSnapshot(
     const { data: recipe, error: recipeError } = await supabase
       .from("recipes")
       .select(
-        "servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, ingredients(ingredient_nutrition(calories_kcal, energy_kj, protein_g, carbohydrate_g, fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug), ingredient_measurement_conversions(unit, grams_per_unit)))"
+        "servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override, ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, energy_kj, protein_g, carbohydrate_g, fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug), ingredient_measurement_conversions(unit, grams_per_unit)))",
       )
       .eq("id", source.recipeId)
       .single();
@@ -88,8 +96,13 @@ async function insertEntryWithSnapshot(
       unit: ing.unit,
       nutritionOverride: ing.nutrition_override as NutrientSet | null,
       ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+      nutritionReferenceAmount: ing.ingredients?.nutrition_reference_amount,
+      nutritionReferenceUnit: ing.ingredients?.nutrition_reference_unit as "g" | "ml" | undefined,
       conversions: Object.fromEntries(
-        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
+          c.unit,
+          c.grams_per_unit,
+        ]),
       ),
     }));
     nutrients = computeRecipeEntryNutrition(inputs, recipe.servings, source.servings);
@@ -97,21 +110,29 @@ async function insertEntryWithSnapshot(
     const { data: ingredient, error: ingredientError } = await supabase
       .from("ingredients")
       .select(
-        "ingredient_nutrition(calories_kcal, energy_kj, protein_g, carbohydrate_g, fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug)"
+        "nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, energy_kj, protein_g, carbohydrate_g, fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg, magnesium_mg, vitamin_b12_ug, folate_ug)",
       )
       .eq("id", source.ingredientId)
       .single();
     if (ingredientError || !ingredient) throw new Error("Ingredient not found");
-    nutrients = computeIngredientEntryNutrition(ingredient.ingredient_nutrition ?? {}, source.quantityGrams);
+    // quantityGrams is grams or millilitres depending on the ingredient's own nutrition_reference_unit (e.g. milk is ml).
+    nutrients = computeIngredientEntryNutrition(
+      ingredient.ingredient_nutrition ?? {},
+      source.quantityGrams,
+      ingredient.nutrition_reference_amount,
+      ingredient.nutrition_reference_unit as "g" | "ml",
+    );
   } else {
     // Custom entries only collect the five macro keys — every other nutrient
     // the snapshot table tracks stays unknown (null), never a guessed 0.
     nutrients = Object.fromEntries(
       NUTRIENT_KEYS.map((key) => {
         const isMacro = (MACRO_KEYS as readonly string[]).includes(key);
-        const value = isMacro ? source.nutrition[key as (typeof MACRO_KEYS)[number]] ?? null : null;
+        const value = isMacro
+          ? (source.nutrition[key as (typeof MACRO_KEYS)[number]] ?? null)
+          : null;
         return [key, { value, complete: value != null }];
-      })
+      }),
     ) as Record<NutrientKey, NutrientResult>;
   }
 
@@ -149,23 +170,44 @@ export async function addFoodDiaryEntryAction(input: AddFoodDiaryEntryInput) {
   const { supabase, userId } = await requireUserId();
 
   if (input.sourceType === "recipe") {
-    await insertEntryWithSnapshot(supabase, userId, input.entryDate, input.mealType, input.notes || null, {
-      sourceType: "recipe",
-      recipeId: input.recipeId,
-      servings: input.servings,
-    });
+    await insertEntryWithSnapshot(
+      supabase,
+      userId,
+      input.entryDate,
+      input.mealType,
+      input.notes || null,
+      {
+        sourceType: "recipe",
+        recipeId: input.recipeId,
+        servings: input.servings,
+      },
+    );
   } else if (input.sourceType === "ingredient") {
-    await insertEntryWithSnapshot(supabase, userId, input.entryDate, input.mealType, input.notes || null, {
-      sourceType: "ingredient",
-      ingredientId: input.ingredientId,
-      quantityGrams: input.quantityGrams,
-    });
+    await insertEntryWithSnapshot(
+      supabase,
+      userId,
+      input.entryDate,
+      input.mealType,
+      input.notes || null,
+      {
+        sourceType: "ingredient",
+        ingredientId: input.ingredientId,
+        quantityGrams: input.quantityGrams,
+      },
+    );
   } else {
-    await insertEntryWithSnapshot(supabase, userId, input.entryDate, input.mealType, input.notes || null, {
-      sourceType: "custom",
-      customFoodName: input.customFoodName,
-      nutrition: input.nutrition,
-    });
+    await insertEntryWithSnapshot(
+      supabase,
+      userId,
+      input.entryDate,
+      input.mealType,
+      input.notes || null,
+      {
+        sourceType: "custom",
+        customFoodName: input.customFoodName,
+        nutrition: input.nutrition,
+      },
+    );
   }
 
   revalidatePath("/health/diary");
@@ -183,11 +225,17 @@ export async function deleteFoodDiaryEntryAction(id: string) {
 }
 
 /** "Copy to today" / "copy previous meal" quick action — recomputes nutrition fresh. */
-export async function copyFoodDiaryEntryAction(id: string, targetDate: string, targetMealType?: FoodDiaryMealType) {
+export async function copyFoodDiaryEntryAction(
+  id: string,
+  targetDate: string,
+  targetMealType?: FoodDiaryMealType,
+) {
   const { supabase, userId } = await requireUserId();
   const { data: original, error } = await supabase
     .from("food_diary_entries")
-    .select("meal_type, source_type, recipe_id, ingredient_id, custom_food_name, servings, quantity_grams, notes")
+    .select(
+      "meal_type, source_type, recipe_id, ingredient_id, custom_food_name, servings, quantity_grams, notes",
+    )
     .eq("id", id)
     .single();
   if (error || !original) throw new Error("Entry not found");
@@ -200,7 +248,11 @@ export async function copyFoodDiaryEntryAction(id: string, targetDate: string, t
       recipeId: original.recipe_id,
       servings: Number(original.servings),
     });
-  } else if (original.source_type === "ingredient" && original.ingredient_id && original.quantity_grams != null) {
+  } else if (
+    original.source_type === "ingredient" &&
+    original.ingredient_id &&
+    original.quantity_grams != null
+  ) {
     await insertEntryWithSnapshot(supabase, userId, targetDate, mealType, original.notes, {
       sourceType: "ingredient",
       ingredientId: original.ingredient_id,
@@ -233,7 +285,10 @@ export async function copyFoodDiaryEntryAction(id: string, targetDate: string, t
 /** "Repeat yesterday" (or any day) — copies every entry from one date to another, fresh-computed. */
 export async function repeatDayAction(sourceDate: string, targetDate: string) {
   const { supabase } = await requireUserId();
-  const { data: entries } = await supabase.from("food_diary_entries").select("id").eq("entry_date", sourceDate);
+  const { data: entries } = await supabase
+    .from("food_diary_entries")
+    .select("id")
+    .eq("entry_date", sourceDate);
   for (const e of entries ?? []) {
     await copyFoodDiaryEntryAction(e.id, targetDate);
   }

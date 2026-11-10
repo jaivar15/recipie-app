@@ -31,7 +31,17 @@ import {
 type HouseholdOption = { id: string; name: string };
 type NutritionSource = { id: string; name: string };
 
-const CONVERTIBLE_UNITS = MEASUREMENT_UNITS.filter((u) => u !== "g" && u !== "kg");
+/** Units that convert trivially (×1 or ×1000) for each nutrition reference unit, so don't need a conversion row. */
+const TRIVIAL_UNITS: Record<IngredientFormValues["nutrition_reference_unit"], readonly string[]> = {
+  g: ["g", "kg"],
+  ml: ["ml", "l"],
+};
+
+/** Common label amounts to offer per reference unit — g products are almost always "per 100g"; liquids are sometimes labelled per 250ml (a glass/carton serving) instead. */
+const REFERENCE_AMOUNT_OPTIONS: Record<IngredientFormValues["nutrition_reference_unit"], number[]> = {
+  g: [100],
+  ml: [100, 250],
+};
 
 export function IngredientForm({
   defaultValues,
@@ -57,6 +67,8 @@ export function IngredientForm({
       name: "",
       alternative_names: [],
       allergens: [],
+      nutrition_reference_unit: "g",
+      nutrition_reference_amount: 100,
       nutrition: {},
       conversions: [],
       ...defaultValues,
@@ -68,6 +80,9 @@ export function IngredientForm({
   const visibility = form.watch("visibility");
   const allergensValue = form.watch("allergens");
   const altNamesValue = form.watch("alternative_names");
+  const referenceUnit = form.watch("nutrition_reference_unit") ?? "g";
+  const referenceAmount = form.watch("nutrition_reference_amount") ?? 100;
+  const convertibleUnits = MEASUREMENT_UNITS.filter((u) => !TRIVIAL_UNITS[referenceUnit].includes(u));
 
   function handleSubmit(values: IngredientFormValues) {
     setSubmitError(null);
@@ -104,7 +119,11 @@ export function IngredientForm({
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Ingredient name</Label>
-            <Input id="name" {...form.register("name")} placeholder="e.g. Chicken thigh, skinless" />
+            <Input
+              id="name"
+              {...form.register("name")}
+              placeholder="e.g. Chicken thigh, skinless"
+            />
             {form.formState.errors.name ? (
               <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
             ) : null}
@@ -119,7 +138,10 @@ export function IngredientForm({
               onBlur={(e) =>
                 form.setValue(
                   "alternative_names",
-                  e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
+                  e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
                 )
               }
             />
@@ -131,11 +153,15 @@ export function IngredientForm({
                 <Label htmlFor="visibility">Visibility</Label>
                 <Select
                   value={visibility}
-                  onValueChange={(v) => form.setValue("visibility", v as IngredientFormValues["visibility"])}
+                  onValueChange={(v) =>
+                    form.setValue("visibility", v as IngredientFormValues["visibility"])
+                  }
                 >
                   <SelectTrigger id="visibility" className="w-full">
                     <SelectValue>
-                      {(value: string) => (value === "household" ? "Household — shared" : "Personal — only you")}
+                      {(value: string) =>
+                        value === "household" ? "Household — shared" : "Personal — only you"
+                      }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -177,7 +203,9 @@ export function IngredientForm({
                 onValueChange={(v) => form.setValue("food_category", v ?? undefined)}
               >
                 <SelectTrigger id="food_category" className="w-full">
-                  <SelectValue placeholder="Select">{(value: string) => value || "Select"}</SelectValue>
+                  <SelectValue placeholder="Select">
+                    {(value: string) => value || "Select"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {FOOD_CATEGORIES.map((c) => (
@@ -196,7 +224,9 @@ export function IngredientForm({
               >
                 <SelectTrigger id="state" className="w-full">
                   <SelectValue placeholder="Select">
-                    {(value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "Select")}
+                    {(value: string) =>
+                      value ? value.charAt(0).toUpperCase() + value.slice(1) : "Select"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -220,7 +250,10 @@ export function IngredientForm({
                     checked={allergensValue?.includes(a)}
                     onCheckedChange={(checked) => {
                       const current = form.getValues("allergens") ?? [];
-                      form.setValue("allergens", checked ? [...current, a] : current.filter((x) => x !== a));
+                      form.setValue(
+                        "allergens",
+                        checked ? [...current, a] : current.filter((x) => x !== a),
+                      );
                     }}
                   />
                   {a}
@@ -238,12 +271,63 @@ export function IngredientForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Nutrition per 100 g</CardTitle>
+          <CardTitle>
+            Nutrition per {referenceAmount} {referenceUnit}
+          </CardTitle>
           <CardDescription>
             Leave a field blank if the value is unknown — it will show as unknown rather than zero.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="nutrition_reference_unit">Nutrition is measured in</Label>
+              <Select
+                value={referenceUnit}
+                onValueChange={(v) => {
+                  const unit = v as IngredientFormValues["nutrition_reference_unit"];
+                  form.setValue("nutrition_reference_unit", unit);
+                  // Reset to that unit's first offered amount (g only ever offers 100).
+                  form.setValue("nutrition_reference_amount", REFERENCE_AMOUNT_OPTIONS[unit][0]);
+                }}
+              >
+                <SelectTrigger id="nutrition_reference_unit" className="w-full">
+                  <SelectValue>
+                    {(value: string) => (value === "ml" ? "Millilitres (liquids)" : "Grams (most foods)")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="g">Grams (most foods)</SelectItem>
+                  <SelectItem value="ml">Millilitres (liquids like milk, oil, stock)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {REFERENCE_AMOUNT_OPTIONS[referenceUnit].length > 1 ? (
+              <div className="space-y-2">
+                <Label htmlFor="nutrition_reference_amount">Per how many {referenceUnit}</Label>
+                <Select
+                  value={String(referenceAmount)}
+                  onValueChange={(v) => form.setValue("nutrition_reference_amount", Number(v))}
+                >
+                  <SelectTrigger id="nutrition_reference_amount" className="w-full">
+                    <SelectValue>{(value: string) => `${value} ${referenceUnit}`}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {REFERENCE_AMOUNT_OPTIONS[referenceUnit].map((amount) => (
+                      <SelectItem key={amount} value={String(amount)}>
+                        {amount} {referenceUnit}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Match whatever the nutrition label actually says — most liquids are labelled per 100ml or per a
+            serving size like 250ml, not per 100g.
+          </p>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="source_id">Source</Label>
@@ -253,7 +337,9 @@ export function IngredientForm({
               >
                 <SelectTrigger id="source_id" className="w-full">
                   <SelectValue placeholder="Select">
-                    {(value: string) => nutritionSources.find((s) => s.id === value)?.name ?? "Select"}
+                    {(value: string) =>
+                      nutritionSources.find((s) => s.id === value)?.name ?? "Select"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -298,8 +384,9 @@ export function IngredientForm({
         <CardHeader>
           <CardTitle>Measurement conversions</CardTitle>
           <CardDescription>
-            Grams and kilograms always work. Add a conversion for any other unit used in recipes (e.g. 1 cup = 125
-            g) — without one, nutrition can&apos;t be calculated for that unit.
+            {referenceUnit === "ml"
+              ? "Millilitres and litres always work. Add a conversion for any other unit used in recipes (e.g. 1 cup = 240 ml) — without one, nutrition can't be calculated for that unit."
+              : "Grams and kilograms always work. Add a conversion for any other unit used in recipes (e.g. 1 cup = 125 g) — without one, nutrition can't be calculated for that unit."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -308,16 +395,21 @@ export function IngredientForm({
               <Select
                 value={form.watch(`conversions.${index}.unit`) ?? ""}
                 onValueChange={(v) =>
-                  form.setValue(`conversions.${index}.unit`, v as IngredientFormValues["conversions"][number]["unit"])
+                  form.setValue(
+                    `conversions.${index}.unit`,
+                    v as IngredientFormValues["conversions"][number]["unit"],
+                  )
                 }
               >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Unit">
-                    {(value: (typeof MEASUREMENT_UNITS)[number] | null) => (value ? UNIT_LABELS[value] : "Unit")}
+                    {(value: (typeof MEASUREMENT_UNITS)[number] | null) =>
+                      value ? UNIT_LABELS[value] : "Unit"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {CONVERTIBLE_UNITS.map((u) => (
+                  {convertibleUnits.map((u) => (
                     <SelectItem key={u} value={u}>
                       {UNIT_LABELS[u]}
                     </SelectItem>
@@ -329,12 +421,17 @@ export function IngredientForm({
                 type="number"
                 step="any"
                 min={0}
-                placeholder="grams"
+                placeholder={referenceUnit}
                 className="w-28"
                 {...form.register(`conversions.${index}.grams_per_unit` as const)}
               />
-              <span className="text-sm text-muted-foreground">g</span>
-              <Button type="button" variant="ghost" size="icon" onClick={() => conversions.remove(index)}>
+              <span className="text-sm text-muted-foreground">{referenceUnit}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => conversions.remove(index)}
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>

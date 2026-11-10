@@ -46,7 +46,11 @@ function addDays(iso: string, n: number): string {
   return toISODate(d);
 }
 
-export default async function FoodDiaryPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+export default async function FoodDiaryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
   const ctx = await getHealthContext();
   if (!ctx) return null;
 
@@ -64,39 +68,47 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
   const supabase = await createClient();
   const thirtyDaysAgo = addDays(today, -30);
 
-  const [{ data: recipeRows }, { data: ingredientRows }, { data: entryRows }, { count: yesterdayCount }, { data: recentRows }] =
-    await Promise.all([
-      supabase.from("recipes").select("id, title").is("deleted_at", null).order("title"),
-      supabase.from("ingredients").select("id, name").order("name"),
-      supabase
-        .from("food_diary_entries")
-        .select(
-          `id, meal_type, source_type, recipe_id, ingredient_id, custom_food_name, servings, quantity_grams, logged_at,
-           recipes(title), ingredients(name),
-           food_diary_nutrition_snapshots(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g, calories_complete, protein_complete, carbs_complete, fat_complete, fibre_complete)`
-        )
-        .eq("user_id", ctx.userId)
-        .eq("entry_date", entryDate)
-        .order("logged_at"),
-      supabase
-        .from("food_diary_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", ctx.userId)
-        .eq("entry_date", prevDate),
-      supabase
-        .from("food_diary_entries")
-        .select(
-          `meal_type, source_type, recipe_id, ingredient_id, custom_food_name, servings, quantity_grams, entry_date,
-           recipes(title), ingredients(name),
-           food_diary_nutrition_snapshots(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g)`
-        )
-        .eq("user_id", ctx.userId)
-        .gte("entry_date", thirtyDaysAgo)
-        .order("entry_date", { ascending: false }),
-    ]);
+  const [
+    { data: recipeRows },
+    { data: ingredientRows },
+    { data: entryRows },
+    { count: yesterdayCount },
+    { data: recentRows },
+  ] = await Promise.all([
+    supabase.from("recipes").select("id, title").is("deleted_at", null).order("title"),
+    supabase.from("ingredients").select("id, name, nutrition_reference_unit").order("name"),
+    supabase
+      .from("food_diary_entries")
+      .select(
+        `id, meal_type, source_type, recipe_id, ingredient_id, custom_food_name, servings, quantity_grams, logged_at,
+           recipes(title), ingredients(name, nutrition_reference_unit),
+           food_diary_nutrition_snapshots(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g, calories_complete, protein_complete, carbs_complete, fat_complete, fibre_complete)`,
+      )
+      .eq("user_id", ctx.userId)
+      .eq("entry_date", entryDate)
+      .order("logged_at"),
+    supabase
+      .from("food_diary_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", ctx.userId)
+      .eq("entry_date", prevDate),
+    supabase
+      .from("food_diary_entries")
+      .select(
+        `meal_type, source_type, recipe_id, ingredient_id, custom_food_name, servings, quantity_grams, entry_date,
+           recipes(title), ingredients(name, nutrition_reference_unit),
+           food_diary_nutrition_snapshots(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g)`,
+      )
+      .eq("user_id", ctx.userId)
+      .gte("entry_date", thirtyDaysAgo)
+      .order("entry_date", { ascending: false }),
+  ]);
 
   const recipes = recipeRows ?? [];
-  const ingredients = ingredientRows ?? [];
+  const ingredients = (ingredientRows ?? []).map((i) => ({
+    ...i,
+    nutrition_reference_unit: i.nutrition_reference_unit as "g" | "ml",
+  }));
 
   type DisplayEntry = {
     id: string;
@@ -114,7 +126,7 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
       e.source_type === "recipe"
         ? `${Number(e.servings)} serving${Number(e.servings) === 1 ? "" : "s"}`
         : e.source_type === "ingredient"
-          ? `${Number(e.quantity_grams)} g`
+          ? `${Number(e.quantity_grams)} ${e.ingredients?.nutrition_reference_unit === "ml" ? "ml" : "g"}`
           : null,
     macros: macrosFromSnapshotRow(e.food_diary_nutrition_snapshots),
   }));
@@ -138,7 +150,7 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
     } else if (r.source_type === "ingredient" && r.ingredient_id && r.quantity_grams != null) {
       food = {
         key: `ingredient:${r.ingredient_id}:${r.quantity_grams}`,
-        label: `${r.ingredients?.name ?? "Ingredient"} (${Number(r.quantity_grams)}g)`,
+        label: `${r.ingredients?.name ?? "Ingredient"} (${Number(r.quantity_grams)}${r.ingredients?.nutrition_reference_unit === "ml" ? "ml" : "g"})`,
         count: 0,
         mealType: r.meal_type,
         sourceType: "ingredient",
@@ -179,16 +191,26 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Food Diary</h1>
-          <p className="text-sm text-muted-foreground">Log what you actually ate — private, and never fabricated when unknown.</p>
+          <p className="text-sm text-muted-foreground">
+            Log what you actually ate — private, and never fabricated when unknown.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" render={<Link href={`/health/diary?date=${prevDate}`} />}>
+          <Button
+            variant="outline"
+            size="icon"
+            render={<Link href={`/health/diary?date=${prevDate}`} />}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" render={<Link href={`/health/diary?date=${today}`} />}>
             Today
           </Button>
-          <Button variant="outline" size="icon" render={<Link href={`/health/diary?date=${nextDate}`} />}>
+          <Button
+            variant="outline"
+            size="icon"
+            render={<Link href={`/health/diary?date=${nextDate}`} />}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -198,7 +220,11 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
         <p className="text-sm font-medium">{dateLabel}</p>
         <div className="flex flex-wrap gap-2">
           {(yesterdayCount ?? 0) > 0 ? (
-            <RepeatDayButton sourceDate={prevDate} targetDate={entryDate} label="Repeat yesterday" />
+            <RepeatDayButton
+              sourceDate={prevDate}
+              targetDate={entryDate}
+              label="Repeat yesterday"
+            />
           ) : null}
           <FrequentFoodsMenu foods={frequentFoods} entryDate={entryDate} />
         </div>
@@ -248,7 +274,9 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
         />
       ) : (
         <div className="rounded-lg border bg-muted/40 p-3">
-          <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">Day total</p>
+          <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Day total
+          </p>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             {dayTotal.calories_kcal.value != null ? (
               <p className="font-semibold tabular-nums">
@@ -259,12 +287,15 @@ export default async function FoodDiaryPage({ searchParams }: { searchParams: Pr
               <p className="text-sm text-muted-foreground">Calories unknown</p>
             )}
             <div className="flex flex-wrap gap-1.5">
-              {MACRO_KEYS.filter((k) => k !== "calories_kcal" && dayTotal[k].value != null).map((k) => (
-                <Badge key={k} variant="outline" className="font-normal tabular-nums">
-                  {SHORT_MACRO_LABELS[k]} {formatMacroValue(dayTotal[k].value, dayTotal[k].complete)}
-                  {NUTRIENT_LABELS[k].unit}
-                </Badge>
-              ))}
+              {MACRO_KEYS.filter((k) => k !== "calories_kcal" && dayTotal[k].value != null).map(
+                (k) => (
+                  <Badge key={k} variant="outline" className="font-normal tabular-nums">
+                    {SHORT_MACRO_LABELS[k]}{" "}
+                    {formatMacroValue(dayTotal[k].value, dayTotal[k].complete)}
+                    {NUTRIENT_LABELS[k].unit}
+                  </Badge>
+                ),
+              )}
             </div>
           </div>
         </div>

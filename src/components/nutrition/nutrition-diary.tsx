@@ -82,10 +82,10 @@ export async function NutritionDiary({
     .select(
       `entry_date, servings, recipe_id,
        recipes(servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
-         ingredients(ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
+         ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
            ingredient_measurement_conversions(unit, grams_per_unit)))),
        meal_plan_member_portions(user_id, portions),
-       meal_plans!inner(household_id)`
+       meal_plans!inner(household_id)`,
     )
     .eq("meal_plans.household_id", householdId)
     .gte("entry_date", startISO)
@@ -111,8 +111,13 @@ export async function NutritionDiary({
       unit: ing.unit,
       nutritionOverride: ing.nutrition_override as NutrientSet | null,
       ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+      nutritionReferenceAmount: ing.ingredients?.nutrition_reference_amount,
+      nutritionReferenceUnit: ing.ingredients?.nutrition_reference_unit as "g" | "ml" | undefined,
       conversions: Object.fromEntries(
-        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [c.unit, c.grams_per_unit])
+        (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
+          c.unit,
+          c.grams_per_unit,
+        ]),
       ),
     }));
     const totals = calculateRecipeNutrition(inputs).nutrients;
@@ -136,7 +141,7 @@ export async function NutritionDiary({
             : null,
           complete: list.length > 0 && list.every((m) => m[key].value != null && m[key].complete),
         },
-      ])
+      ]),
     ) as Macros;
   }
 
@@ -155,8 +160,14 @@ export async function NutritionDiary({
   const avg7Divided = Object.fromEntries(
     MACRO_KEYS.map((k) => [
       k,
-      { value: avg7[k].value != null && last7Dates.length > 0 ? avg7[k].value! / last7Dates.length : null, complete: avg7[k].complete },
-    ])
+      {
+        value:
+          avg7[k].value != null && last7Dates.length > 0
+            ? avg7[k].value! / last7Dates.length
+            : null,
+        complete: avg7[k].complete,
+      },
+    ]),
   ) as Macros;
 
   const chartData: MacroTrendPoint[] = Array.from({ length: period }, (_, i) => {
@@ -175,7 +186,8 @@ export async function NutritionDiary({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Based on meals you&apos;re tagged as eating in the meal planner, scaled by your portion share.
+          Based on meals you&apos;re tagged as eating in the meal planner, scaled by your portion
+          share.
         </p>
         <div className="flex gap-1">
           {PERIODS.map((p) => (
@@ -195,16 +207,22 @@ export async function NutritionDiary({
         {CARD_META.map(({ key, icon }) => {
           const label = NUTRIENT_LABELS[key];
           const today = formatMacroValue(todayMacros[key].value, todayMacros[key].complete);
-          const avg = formatMacroValue(avg7Divided[key].value != null ? Math.round(avg7Divided[key].value!) : null, avg7Divided[key].complete);
+          const avg = formatMacroValue(
+            avg7Divided[key].value != null ? Math.round(avg7Divided[key].value!) : null,
+            avg7Divided[key].complete,
+          );
           return (
             <Card key={key}>
               <CardHeader className="flex-row items-center justify-between pb-0">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label.label}</p>
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  {label.label}
+                </p>
                 <span aria-hidden>{icon}</span>
               </CardHeader>
               <CardContent className="space-y-1">
                 <p className="text-2xl font-semibold tabular-nums">
-                  {today ?? "0"} <span className="text-sm font-normal text-muted-foreground">{label.unit}</span>
+                  {today ?? "0"}{" "}
+                  <span className="text-sm font-normal text-muted-foreground">{label.unit}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {avg != null ? `${avg} ${label.unit}/day · 7d avg` : "No data in the last 7 days"}
@@ -218,7 +236,9 @@ export async function NutritionDiary({
       <Card>
         <CardHeader>
           <p className="font-medium">Macro trend</p>
-          <p className="text-sm text-muted-foreground">Daily protein, carbs and fat over the last {period} days</p>
+          <p className="text-sm text-muted-foreground">
+            Daily protein, carbs and fat over the last {period} days
+          </p>
         </CardHeader>
         <CardContent>
           <MacroTrendChart data={chartData} />
@@ -261,7 +281,9 @@ export async function NutritionDiary({
                   });
                   return (
                     <TableRow key={date}>
-                      <TableCell className="font-medium">{date === todayISO ? `${label} (today)` : label}</TableCell>
+                      <TableCell className="font-medium">
+                        {date === todayISO ? `${label} (today)` : label}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatMacroValue(m.calories_kcal.value, m.calories_kcal.complete) ?? "—"}
                       </TableCell>
@@ -269,7 +291,8 @@ export async function NutritionDiary({
                         {formatMacroValue(m.protein_g.value, m.protein_g.complete) ?? "—"}g
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatMacroValue(m.carbohydrate_g.value, m.carbohydrate_g.complete) ?? "—"}g
+                        {formatMacroValue(m.carbohydrate_g.value, m.carbohydrate_g.complete) ?? "—"}
+                        g
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatMacroValue(m.fat_g.value, m.fat_g.complete) ?? "—"}g

@@ -1,6 +1,8 @@
 import type { Database } from "@/lib/types/database";
 
 export type MeasurementUnit = Database["public"]["Enums"]["measurement_unit"];
+/** The unit an ingredient's stored nutrition is "per" of — grams for most foods, millilitres for liquids like milk or oil. */
+export type NutritionReferenceUnit = "g" | "ml";
 
 export const NUTRIENT_KEYS = [
   "calories_kcal",
@@ -40,7 +42,13 @@ export const NUTRIENT_LABELS: Record<NutrientKey, { label: string; unit: string 
 };
 
 /** The five macros shown in compact nutrition summaries (meal planner, etc). */
-export const MACRO_KEYS = ["calories_kcal", "protein_g", "carbohydrate_g", "fat_g", "fibre_g"] as const;
+export const MACRO_KEYS = [
+  "calories_kcal",
+  "protein_g",
+  "carbohydrate_g",
+  "fat_g",
+  "fibre_g",
+] as const;
 export type MacroKey = (typeof MACRO_KEYS)[number];
 
 export type NutrientSet = Partial<Record<NutrientKey, number | null>>;
@@ -50,11 +58,15 @@ export interface RecipeIngredientForCalc {
   ingredientName: string;
   quantity: number | null;
   unit: MeasurementUnit | null;
-  /** Per-100g override values for this specific line, if the cook entered one. */
+  /** Override values for this specific line, if the cook entered one — same reference amount/unit as ingredientNutrition. */
   nutritionOverride: NutrientSet | null;
-  /** Per-100g values from the linked ingredient database record, if any. */
+  /** Values from the linked ingredient database record, per nutritionReferenceAmount of nutritionReferenceUnit, if any. */
   ingredientNutrition: NutrientSet | null;
-  /** grams-per-unit map for the linked ingredient (ml, cup, tsp, etc). */
+  /** The amount ingredientNutrition/nutritionOverride are "per" of — e.g. 100, or 250 for a per-250ml product. Defaults to 100 when omitted. */
+  nutritionReferenceAmount?: number;
+  /** Which unit nutritionReferenceAmount is in. Defaults to "g" when omitted, for callers not yet passing it. */
+  nutritionReferenceUnit?: NutritionReferenceUnit;
+  /** Reference-unit-per-measurement-unit map for the linked ingredient (ml, cup, tsp, etc) — grams if nutritionReferenceUnit is "g", millilitres if "ml". */
   conversions: Partial<Record<MeasurementUnit, number>>;
 }
 
@@ -73,57 +85,62 @@ export interface RecipeNutritionTotals {
 
 export type Macros = Record<MacroKey, NutrientResult>;
 export const EMPTY_MACROS: Macros = Object.fromEntries(
-  MACRO_KEYS.map((k) => [k, { value: null, complete: false }])
+  MACRO_KEYS.map((k) => [k, { value: null, complete: false }]),
 ) as Macros;
 
 /**
- * Converts a quantity+unit to grams for one ingredient line. Returns null
- * (never a guess) when the amount can't be determined: g/kg convert
+ * Converts a quantity+unit to the ingredient's reference unit (grams for a
+ * "g"-based ingredient, millilitres for an "ml" one) for one recipe line.
+ * Returns null (never a guess) when the amount can't be determined: the
+ * reference unit itself and its x1000 multiple (g/kg, or ml/l) convert
  * trivially, anything else requires an ingredient-specific conversion row
  * since density/piece size varies per ingredient.
  */
-export function resolveGrams(
+export function resolveReferenceAmount(
   quantity: number | null,
   unit: MeasurementUnit | null,
-  conversions: Partial<Record<MeasurementUnit, number>>
+  conversions: Partial<Record<MeasurementUnit, number>>,
+  referenceUnit: NutritionReferenceUnit = "g",
 ): number | null {
   if (quantity == null || unit == null) return null;
-  if (unit === "g") return quantity;
-  if (unit === "kg") return quantity * 1000;
-  const gramsPerUnit = conversions[unit];
-  return gramsPerUnit != null ? quantity * gramsPerUnit : null;
+  const [trivialUnit, trivialMultipleUnit] = referenceUnit === "ml" ? (["ml", "l"] as const) : (["g", "kg"] as const);
+  if (unit === trivialUnit) return quantity;
+  if (unit === trivialMultipleUnit) return quantity * 1000;
+  const perUnit = conversions[unit];
+  return perUnit != null ? quantity * perUnit : null;
 }
 
-export function calculateRecipeNutrition(ingredients: RecipeIngredientForCalc[]): RecipeNutritionTotals {
-  const sums: Record<NutrientKey, number> = Object.fromEntries(NUTRIENT_KEYS.map((k) => [k, 0])) as Record<
-    NutrientKey,
-    number
-  >;
+export function calculateRecipeNutrition(
+  ingredients: RecipeIngredientForCalc[],
+): RecipeNutritionTotals {
+  const sums: Record<NutrientKey, number> = Object.fromEntries(
+    NUTRIENT_KEYS.map((k) => [k, 0]),
+  ) as Record<NutrientKey, number>;
   const hasAnyValue: Record<NutrientKey, boolean> = Object.fromEntries(
-    NUTRIENT_KEYS.map((k) => [k, false])
+    NUTRIENT_KEYS.map((k) => [k, false]),
   ) as Record<NutrientKey, boolean>;
-  const complete: Record<NutrientKey, boolean> = Object.fromEntries(NUTRIENT_KEYS.map((k) => [k, true])) as Record<
-    NutrientKey,
-    boolean
-  >;
+  const complete: Record<NutrientKey, boolean> = Object.fromEntries(
+    NUTRIENT_KEYS.map((k) => [k, true]),
+  ) as Record<NutrientKey, boolean>;
   const unresolvedIngredientNames: string[] = [];
 
   for (const line of ingredients) {
-    const grams = resolveGrams(line.quantity, line.unit, line.conversions);
-    if (grams == null) {
+    const amount = resolveReferenceAmount(line.quantity, line.unit, line.conversions, line.nutritionReferenceUnit);
+    if (amount == null) {
       unresolvedIngredientNames.push(line.ingredientName);
       for (const key of NUTRIENT_KEYS) complete[key] = false;
       continue;
     }
 
+    const referenceAmount = line.nutritionReferenceAmount ?? 100;
     const source = line.nutritionOverride ?? line.ingredientNutrition;
     for (const key of NUTRIENT_KEYS) {
-      const per100g = source?.[key];
-      if (per100g == null) {
+      const perReference = source?.[key];
+      if (perReference == null) {
         complete[key] = false;
         continue;
       }
-      sums[key] += (grams / 100) * per100g;
+      sums[key] += (amount / referenceAmount) * perReference;
       hasAnyValue[key] = true;
     }
   }
@@ -131,30 +148,49 @@ export function calculateRecipeNutrition(ingredients: RecipeIngredientForCalc[])
   const nutrients = Object.fromEntries(
     NUTRIENT_KEYS.map((key) => [
       key,
-      { value: hasAnyValue[key] ? Math.round(sums[key] * 100) / 100 : null, complete: complete[key] },
-    ])
+      {
+        value: hasAnyValue[key] ? Math.round(sums[key] * 100) / 100 : null,
+        complete: complete[key],
+      },
+    ]),
   ) as Record<NutrientKey, NutrientResult>;
 
   return { nutrients, unresolvedIngredientNames };
 }
 
-export function divideNutrients(totals: Record<NutrientKey, NutrientResult>, divisor: number): Record<NutrientKey, NutrientResult> {
+export function divideNutrients(
+  totals: Record<NutrientKey, NutrientResult>,
+  divisor: number,
+): Record<NutrientKey, NutrientResult> {
   return Object.fromEntries(
     NUTRIENT_KEYS.map((key) => {
       const n = totals[key];
       return [
         key,
-        { value: n.value != null && divisor > 0 ? Math.round((n.value / divisor) * 100) / 100 : null, complete: n.complete },
+        {
+          value:
+            n.value != null && divisor > 0 ? Math.round((n.value / divisor) * 100) / 100 : null,
+          complete: n.complete,
+        },
       ];
-    })
+    }),
   ) as Record<NutrientKey, NutrientResult>;
 }
 
-export function multiplyNutrients(totals: Record<NutrientKey, NutrientResult>, factor: number): Record<NutrientKey, NutrientResult> {
+export function multiplyNutrients(
+  totals: Record<NutrientKey, NutrientResult>,
+  factor: number,
+): Record<NutrientKey, NutrientResult> {
   return Object.fromEntries(
     NUTRIENT_KEYS.map((key) => {
       const n = totals[key];
-      return [key, { value: n.value != null ? Math.round(n.value * factor * 100) / 100 : null, complete: n.complete }];
-    })
+      return [
+        key,
+        {
+          value: n.value != null ? Math.round(n.value * factor * 100) / 100 : null,
+          complete: n.complete,
+        },
+      ];
+    }),
   ) as Record<NutrientKey, NutrientResult>;
 }

@@ -28,11 +28,11 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
     supabase
       .from("ingredients")
       .select(
-        `id, household_id, visibility, name, alternative_names, food_category, state, brand, allergens, notes,
+        `id, household_id, visibility, name, alternative_names, food_category, state, brand, allergens, notes, nutrition_reference_amount, nutrition_reference_unit,
          ingredient_nutrition(source_id, source_detail, energy_kj, calories_kcal, protein_g, carbohydrate_g,
            fat_g, saturated_fat_g, fibre_g, sugars_g, sodium_mg, iron_mg, calcium_mg, potassium_mg,
            magnesium_mg, vitamin_b12_ug, folate_ug),
-         ingredient_measurement_conversions(unit, grams_per_unit)`
+         ingredient_measurement_conversions(unit, grams_per_unit)`,
       )
       .eq("id", id)
       .maybeSingle(),
@@ -64,6 +64,8 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
     brand: ingredient.brand ?? "",
     allergens: ingredient.allergens,
     notes: ingredient.notes ?? "",
+    nutrition_reference_amount: Number(ingredient.nutrition_reference_amount),
+    nutrition_reference_unit: ingredient.nutrition_reference_unit as "g" | "ml",
     nutrition: n
       ? {
           source_id: n.source_id ?? undefined,
@@ -111,13 +113,15 @@ export default async function EditIngredientPage({ params }: { params: Promise<{
             <AlertDialogHeader>
               <AlertDialogTitle>Delete {ingredient.name}?</AlertDialogTitle>
               <AlertDialogDescription>
-                Recipes using this ingredient keep their saved name and quantity, but lose the link to this
-                ingredient&apos;s nutrition data.
+                Recipes using this ingredient keep their saved name and quantity, but lose the link
+                to this ingredient&apos;s nutrition data.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={deleteIngredientAction.bind(null, id)}>Delete</AlertDialogAction>
+              <AlertDialogAction onClick={deleteIngredientAction.bind(null, id)}>
+                Delete
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

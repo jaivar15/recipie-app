@@ -60,4 +60,33 @@ describe("parseIngredientsCsv", () => {
     expect(rows[0].rowNumber).toBe(2);
     expect(rows[1].rowNumber).toBe(3);
   });
+
+  it("reads nutrition_reference_unit as ml for liquids like milk", () => {
+    const csv = "name,nutrition_reference_unit,calories_kcal\nMilk,ml,64";
+    const { rows } = parseIngredientsCsv(csv);
+    expect(rows[0].nutrition_reference_unit).toBe("ml");
+  });
+
+  it("defaults nutrition_reference_unit to g when blank, missing, or unrecognised", () => {
+    const withoutColumn = parseIngredientsCsv("name,calories_kcal\nFlour,350");
+    expect(withoutColumn.rows[0].nutrition_reference_unit).toBe("g");
+
+    const blank = parseIngredientsCsv("name,nutrition_reference_unit\nFlour,");
+    expect(blank.rows[0].nutrition_reference_unit).toBe("g");
+
+    const garbage = parseIngredientsCsv("name,nutrition_reference_unit\nFlour,cups");
+    expect(garbage.rows[0].nutrition_reference_unit).toBe("g");
+  });
+
+  it("reads a custom nutrition_reference_amount, e.g. 250 for a per-250ml-labelled product", () => {
+    const csv = "name,nutrition_reference_unit,nutrition_reference_amount\nMilk,ml,250";
+    const { rows } = parseIngredientsCsv(csv);
+    expect(rows[0].nutrition_reference_amount).toBe(250);
+  });
+
+  it("defaults nutrition_reference_amount to 100 when blank, missing, or non-positive", () => {
+    expect(parseIngredientsCsv("name\nFlour").rows[0].nutrition_reference_amount).toBe(100);
+    expect(parseIngredientsCsv("name,nutrition_reference_amount\nFlour,").rows[0].nutrition_reference_amount).toBe(100);
+    expect(parseIngredientsCsv("name,nutrition_reference_amount\nFlour,-5").rows[0].nutrition_reference_amount).toBe(100);
+  });
 });

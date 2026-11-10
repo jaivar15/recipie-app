@@ -34,6 +34,8 @@ export async function bulkImportIngredientsAction(
       brand: row.brand,
       allergens: row.allergens,
       notes: row.notes,
+      nutrition_reference_unit: row.nutrition_reference_unit,
+      nutrition_reference_amount: row.nutrition_reference_amount,
       nutrition: row.nutrition,
       conversions: [],
     });

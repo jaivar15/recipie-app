@@ -166,7 +166,7 @@ export default async function MealPlannerPage({
       .select(
         `id, entry_date, meal_type, servings, custom_title, recipe_id,
          recipes(title, servings, recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
-           ingredients(ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
+           ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g),
              ingredient_measurement_conversions(unit, grams_per_unit)))),
          meal_plan_member_portions(user_id, profiles!meal_plan_member_portions_user_id_fkey(display_name))`,
       )
@@ -185,6 +185,8 @@ export default async function MealPlannerPage({
           unit: ing.unit,
           nutritionOverride: ing.nutrition_override as NutrientSet | null,
           ingredientNutrition: ing.ingredients?.ingredient_nutrition ?? null,
+          nutritionReferenceAmount: ing.ingredients?.nutrition_reference_amount,
+          nutritionReferenceUnit: ing.ingredients?.nutrition_reference_unit as "g" | "ml" | undefined,
           conversions: Object.fromEntries(
             (ing.ingredients?.ingredient_measurement_conversions ?? []).map((c) => [
               c.unit,

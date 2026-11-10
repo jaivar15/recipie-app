@@ -15,6 +15,8 @@ type IngredientRow = {
   state: string | null;
   brand: string | null;
   allergens: string[];
+  nutrition_reference_amount: number;
+  nutrition_reference_unit: "g" | "ml";
   ingredient_nutrition: {
     calories_kcal: number | null;
     protein_g: number | null;
@@ -25,7 +27,7 @@ type IngredientRow = {
 };
 
 const FIELDS = `
-  id, name, visibility, food_category, state, brand, allergens,
+  id, name, visibility, food_category, state, brand, allergens, nutrition_reference_amount, nutrition_reference_unit,
   ingredient_nutrition(calories_kcal, protein_g, carbohydrate_g, fat_g, fibre_g)
 `;
 
@@ -178,7 +180,10 @@ function IngredientCard({ ingredient: ing }: { ingredient: IngredientRow }) {
               </span>
             </span>
           ))}
-          <span className="text-muted-foreground">/100g</span>
+          <span className="text-muted-foreground">
+            /{Number(ing.nutrition_reference_amount)}
+            {ing.nutrition_reference_unit}
+          </span>
         </div>
       ) : (
         <p className="border-t pt-2 text-xs text-muted-foreground">No nutrition data yet</p>
