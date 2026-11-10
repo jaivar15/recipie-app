@@ -1882,6 +1882,7 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
       archive_household: { Args: { p_household_id: string }; Returns: undefined };
+      auto_dietary_label_values: { Args: Record<PropertyKey, never>; Returns: string[] };
       can_edit_collection: { Args: { p_collection_id: string }; Returns: boolean };
       can_edit_ingredient: { Args: { p_ingredient_id: string }; Returns: boolean };
       can_edit_recipe: { Args: { p_recipe_id: string }; Returns: boolean };
@@ -1898,6 +1899,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      compute_auto_dietary_labels: { Args: { p_recipe_id: string }; Returns: string[] };
       create_household: { Args: { p_name: string }; Returns: string };
       create_ingredient: {
         Args: { p_conversions: Json; p_ingredient: Json; p_nutrition: Json };
@@ -1968,6 +1970,7 @@ export type Database = {
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined };
       shares_household_with: { Args: { p_user_id: string }; Returns: boolean };
       soft_delete_recipe: { Args: { p_recipe_id: string }; Returns: undefined };
+      strip_auto_dietary_labels: { Args: { p_labels: string[] }; Returns: string[] };
       toggle_shopping_list_item: { Args: { p_item_id: string }; Returns: boolean };
       transfer_household_ownership: {
         Args: { p_household_id: string; p_new_owner_user_id: string };

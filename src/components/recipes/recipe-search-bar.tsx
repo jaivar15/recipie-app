@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Filter, Search, X, Bookmark, Trash2, Target } from "lucide-react";
-import { CUISINES, DIFFICULTIES, DIETARY_LABELS } from "@/lib/validations/recipe";
+import { CUISINES, DIFFICULTIES, DIETARY_LABELS, MEAL_TYPES, QUICK_MEAL_TYPES } from "@/lib/validations/recipe";
 import { createSavedFilterAction, deleteSavedFilterAction } from "@/app/(app)/categories/actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ const FILTER_KEYS = [
   "cuisine",
   "difficulty",
   "dietary",
+  "mealType",
   "maxTime",
   "minProtein",
   "maxCalories",
@@ -98,6 +99,14 @@ export function RecipeSearchBar({
 
   const selectedDietary = searchParams.get("dietary")?.split(",").filter(Boolean) ?? [];
 
+  function toggleMealType(type: string) {
+    const current = searchParams.get("mealType")?.split(",").filter(Boolean) ?? [];
+    const next = current.includes(type) ? current.filter((x) => x !== type) : [...current, type];
+    updateParams({ mealType: next.length > 0 ? next.join(",") : null });
+  }
+
+  const selectedMealTypes = searchParams.get("mealType")?.split(",").filter(Boolean) ?? [];
+
   const fitsTargetsActive =
     !!nutritionTargets &&
     (nutritionTargets.maxCaloriesPerMeal == null ||
@@ -125,7 +134,21 @@ export function RecipeSearchBar({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {QUICK_MEAL_TYPES.map((mt) => (
+          <Button
+            key={mt}
+            type="button"
+            size="sm"
+            variant={selectedMealTypes.includes(mt) ? "default" : "outline"}
+            onClick={() => toggleMealType(mt)}
+          >
+            {mt}
+          </Button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
       <div className="relative flex-1">
         <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -241,6 +264,21 @@ export function RecipeSearchBar({
             </div>
 
             <div className="space-y-2">
+              <Label>Meal type</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {MEAL_TYPES.map((type) => (
+                  <label key={type} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={selectedMealTypes.includes(type)}
+                      onCheckedChange={() => toggleMealType(type)}
+                    />
+                    {type}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
               <Label>Dietary</Label>
               <div className="grid grid-cols-2 gap-1.5">
                 {DIETARY_LABELS.map((label) => (
@@ -342,6 +380,7 @@ export function RecipeSearchBar({
           </SheetFooter>
         </SheetContent>
       </Sheet>
+      </div>
     </div>
   );
 }

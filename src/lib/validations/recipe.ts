@@ -50,17 +50,38 @@ export const COOKING_METHODS = [
   "No Cook",
 ] as const;
 
-export const DIETARY_LABELS = [
+/** User-ticked dietary labels — not derivable from ingredient data alone. */
+export const MANUAL_DIETARY_LABELS = [
   "Vegetarian",
   "Vegan",
-  "Gluten Free",
-  "Dairy Free",
-  "Contains Eggs",
   "High Protein",
   "High Fibre",
   "Low FODMAP",
   "Low Lactose",
 ] as const;
+
+/**
+ * Allergen (from ingredients.allergens, see ALLERGENS in validations/ingredient.ts)
+ * -> the "free from" dietary label applied automatically when NONE of a
+ * recipe's ingredients carry that allergen. Kept in sync with the same
+ * mapping in supabase/migrations/20261110000001_auto_dietary_labels.sql.
+ */
+export const ALLERGEN_TO_FREE_LABEL = {
+  Gluten: "Gluten Free",
+  Dairy: "Dairy Free",
+  Eggs: "Egg Free",
+  Peanuts: "Peanut Free",
+  "Tree nuts": "Tree Nut Free",
+  Soy: "Soy Free",
+  Fish: "Fish Free",
+  Shellfish: "Shellfish Free",
+  Sesame: "Sesame Free",
+} as const;
+
+/** Dietary labels computed server-side from ingredient allergens — not user-editable. */
+export const AUTO_DIETARY_LABELS = Object.values(ALLERGEN_TO_FREE_LABEL);
+
+export const DIETARY_LABELS = [...MANUAL_DIETARY_LABELS, ...AUTO_DIETARY_LABELS] as const;
 
 export const MEAL_TYPES = [
   "Breakfast",
@@ -72,6 +93,9 @@ export const MEAL_TYPES = [
   "Sides",
   "Meal Prep",
 ] as const;
+
+/** The subset of MEAL_TYPES surfaced as one-click chips on the Recipe Library, per the user's ask. */
+export const QUICK_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
 
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 

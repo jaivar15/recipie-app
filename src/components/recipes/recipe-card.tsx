@@ -15,6 +15,8 @@ export type RecipeCardData = {
   cookTimeMinutes: number | null;
   servings: number;
   authorName: string | null;
+  mealType: string[];
+  dietaryLabels: string[];
 };
 
 export function RecipeCard({ recipe }: { recipe: RecipeCardData }) {
@@ -57,6 +59,20 @@ export function RecipeCard({ recipe }: { recipe: RecipeCardData }) {
             </span>
             {recipe.cuisine ? <span>{recipe.cuisine}</span> : null}
           </div>
+          {recipe.mealType.length > 0 || recipe.dietaryLabels.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {recipe.mealType.map((mt) => (
+                <Badge key={mt} variant="outline" className="px-1.5 py-0 text-[10px]">
+                  {mt}
+                </Badge>
+              ))}
+              {recipe.dietaryLabels.map((label) => (
+                <Badge key={label} variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
         </div>
       </Card>
     </Link>

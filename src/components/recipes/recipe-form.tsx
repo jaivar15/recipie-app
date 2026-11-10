@@ -13,7 +13,8 @@ import {
   CUISINES,
   COOKING_METHODS,
   MEAL_TYPES,
-  DIETARY_LABELS,
+  MANUAL_DIETARY_LABELS,
+  AUTO_DIETARY_LABELS,
   DIFFICULTIES,
 } from "@/lib/validations/recipe";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -77,6 +79,9 @@ export function RecipeForm({
   const dietaryLabelsValue = form.watch("dietary_labels");
   const dietaryVerifiedValue = form.watch("dietary_labels_verified");
   const tagIdsValue = form.watch("tag_ids");
+  const autoDetectedLabels = (dietaryLabelsValue ?? []).filter((l) =>
+    (AUTO_DIETARY_LABELS as readonly string[]).includes(l),
+  );
 
   function handleSubmit(values: RecipeFormValues) {
     setSubmitError(null);
@@ -133,11 +138,15 @@ export function RecipeForm({
                 <Label htmlFor="visibility">Visibility</Label>
                 <Select
                   value={visibility}
-                  onValueChange={(v) => form.setValue("visibility", v as RecipeFormValues["visibility"])}
+                  onValueChange={(v) =>
+                    form.setValue("visibility", v as RecipeFormValues["visibility"])
+                  }
                 >
                   <SelectTrigger id="visibility" className="w-full">
                     <SelectValue>
-                      {(value: string) => (value === "household" ? "Household — shared" : "Personal — only you")}
+                      {(value: string) =>
+                        value === "household" ? "Household — shared" : "Personal — only you"
+                      }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -183,7 +192,12 @@ export function RecipeForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="source_url">Source URL</Label>
-            <Input id="source_url" type="url" {...form.register("source_url")} placeholder="https://" />
+            <Input
+              id="source_url"
+              type="url"
+              {...form.register("source_url")}
+              placeholder="https://"
+            />
           </div>
         </CardContent>
       </Card>
@@ -196,26 +210,51 @@ export function RecipeForm({
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="prep_time_minutes">Prep time (min)</Label>
-              <Input id="prep_time_minutes" type="number" min={0} {...form.register("prep_time_minutes")} />
+              <Input
+                id="prep_time_minutes"
+                type="number"
+                min={0}
+                {...form.register("prep_time_minutes")}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="cook_time_minutes">Cook time (min)</Label>
-              <Input id="cook_time_minutes" type="number" min={0} {...form.register("cook_time_minutes")} />
+              <Input
+                id="cook_time_minutes"
+                type="number"
+                min={0}
+                {...form.register("cook_time_minutes")}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="resting_time_minutes">Resting time (min)</Label>
-              <Input id="resting_time_minutes" type="number" min={0} {...form.register("resting_time_minutes")} />
+              <Input
+                id="resting_time_minutes"
+                type="number"
+                min={0}
+                {...form.register("resting_time_minutes")}
+              />
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="servings">Servings</Label>
-              <Input id="servings" type="number" min={0.5} step={0.5} {...form.register("servings")} />
+              <Input
+                id="servings"
+                type="number"
+                min={0.5}
+                step={0.5}
+                {...form.register("servings")}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="serving_size">Serving size</Label>
-              <Input id="serving_size" {...form.register("serving_size")} placeholder="e.g. 1 bowl" />
+              <Input
+                id="serving_size"
+                {...form.register("serving_size")}
+                placeholder="e.g. 1 bowl"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="finished_weight_grams">Finished weight (g)</Label>
@@ -233,11 +272,15 @@ export function RecipeForm({
               <Label htmlFor="difficulty">Difficulty</Label>
               <Select
                 value={form.watch("difficulty") ?? ""}
-                onValueChange={(v) => form.setValue("difficulty", v as RecipeFormValues["difficulty"])}
+                onValueChange={(v) =>
+                  form.setValue("difficulty", v as RecipeFormValues["difficulty"])
+                }
               >
                 <SelectTrigger id="difficulty" className="w-full">
                   <SelectValue placeholder="Select">
-                    {(value: string | null) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "Select")}
+                    {(value: string | null) =>
+                      value ? value.charAt(0).toUpperCase() + value.slice(1) : "Select"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -298,7 +341,7 @@ export function RecipeForm({
                       const current = form.getValues("meal_type") ?? [];
                       form.setValue(
                         "meal_type",
-                        checked ? [...current, mt] : current.filter((x) => x !== mt)
+                        checked ? [...current, mt] : current.filter((x) => x !== mt),
                       );
                     }}
                   />
@@ -320,7 +363,7 @@ export function RecipeForm({
                   e.target.value
                     .split(",")
                     .map((s) => s.trim())
-                    .filter(Boolean)
+                    .filter(Boolean),
                 )
               }
             />
@@ -332,15 +375,18 @@ export function RecipeForm({
         <CardHeader>
           <CardTitle>Categories</CardTitle>
           <CardDescription>
-            Applying a dietary label here doesn&apos;t make it verified — tick &quot;verified&quot; once you&apos;ve
-            confirmed it (e.g. checked every ingredient and ruled out cross-contact).
+            Applying a dietary label here doesn&apos;t make it verified — tick &quot;verified&quot;
+            once you&apos;ve confirmed it (e.g. checked every ingredient and ruled out
+            cross-contact). Free-from labels (gluten free, dairy free, nut free, etc.) aren&apos;t
+            ticked by hand — they&apos;re detected automatically from the ingredients you add once
+            you save, as long as every ingredient is matched to one in your ingredient library.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Dietary labels</Label>
             <div className="space-y-1.5">
-              {DIETARY_LABELS.map((label) => {
+              {MANUAL_DIETARY_LABELS.map((label) => {
                 const applied = dietaryLabelsValue?.includes(label);
                 const verified = dietaryVerifiedValue?.includes(label);
                 return (
@@ -350,12 +396,16 @@ export function RecipeForm({
                         checked={applied}
                         onCheckedChange={(checked) => {
                           const current = form.getValues("dietary_labels") ?? [];
-                          const next = checked ? [...current, label] : current.filter((x) => x !== label);
+                          const next = checked
+                            ? [...current, label]
+                            : current.filter((x) => x !== label);
                           form.setValue("dietary_labels", next);
                           if (!checked) {
                             form.setValue(
                               "dietary_labels_verified",
-                              (form.getValues("dietary_labels_verified") ?? []).filter((x) => x !== label)
+                              (form.getValues("dietary_labels_verified") ?? []).filter(
+                                (x) => x !== label,
+                              ),
                             );
                           }
                         }}
@@ -370,7 +420,7 @@ export function RecipeForm({
                             const current = form.getValues("dietary_labels_verified") ?? [];
                             form.setValue(
                               "dietary_labels_verified",
-                              checked ? [...current, label] : current.filter((x) => x !== label)
+                              checked ? [...current, label] : current.filter((x) => x !== label),
                             );
                           }}
                         />
@@ -383,6 +433,41 @@ export function RecipeForm({
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label>Automatically detected from ingredients</Label>
+            {autoDetectedLabels.length > 0 ? (
+              <div className="space-y-1.5">
+                {autoDetectedLabels.map((label) => {
+                  const verified = dietaryVerifiedValue?.includes(label);
+                  return (
+                    <div key={label} className="flex items-center gap-4 text-sm">
+                      <Badge variant="secondary" className="w-40 justify-center">
+                        {label}
+                      </Badge>
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={verified}
+                          onCheckedChange={(checked) => {
+                            const current = form.getValues("dietary_labels_verified") ?? [];
+                            form.setValue(
+                              "dietary_labels_verified",
+                              checked ? [...current, label] : current.filter((x) => x !== label),
+                            );
+                          }}
+                        />
+                        Verified
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                None yet — save the recipe to detect free-from labels from its ingredients.
+              </p>
+            )}
+          </div>
+
           {availableTags.length > 0 ? (
             <div className="space-y-2">
               <Label>Tags</Label>
@@ -393,7 +478,10 @@ export function RecipeForm({
                       checked={tagIdsValue?.includes(tag.id)}
                       onCheckedChange={(checked) => {
                         const current = form.getValues("tag_ids") ?? [];
-                        form.setValue("tag_ids", checked ? [...current, tag.id] : current.filter((x) => x !== tag.id));
+                        form.setValue(
+                          "tag_ids",
+                          checked ? [...current, tag.id] : current.filter((x) => x !== tag.id),
+                        );
                       }}
                     />
                     {tag.name}
@@ -418,7 +506,9 @@ export function RecipeForm({
                 <IngredientAutocomplete
                   value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
                   linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
-                  householdId={visibility === "household" ? (form.watch("household_id") ?? null) : null}
+                  householdId={
+                    visibility === "household" ? (form.watch("household_id") ?? null) : null
+                  }
                   onChange={(name, id) => {
                     form.setValue(`ingredients.${index}.ingredient_name`, name);
                     form.setValue(`ingredients.${index}.ingredient_id`, id);
@@ -433,12 +523,17 @@ export function RecipeForm({
                 <Select
                   value={form.watch(`ingredients.${index}.unit`) ?? ""}
                   onValueChange={(v) =>
-                    form.setValue(`ingredients.${index}.unit`, v as RecipeFormValues["ingredients"][number]["unit"])
+                    form.setValue(
+                      `ingredients.${index}.unit`,
+                      v as RecipeFormValues["ingredients"][number]["unit"],
+                    )
                   }
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Unit">
-                      {(value: (typeof MEASUREMENT_UNITS)[number] | null) => (value ? UNIT_LABELS[value] : "Unit")}
+                      {(value: (typeof MEASUREMENT_UNITS)[number] | null) =>
+                        value ? UNIT_LABELS[value] : "Unit"
+                      }
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -509,7 +604,10 @@ export function RecipeForm({
                     placeholder="Temp (°C)"
                     {...form.register(`steps.${index}.temperature_celsius` as const)}
                   />
-                  <Input placeholder="Equipment" {...form.register(`steps.${index}.equipment` as const)} />
+                  <Input
+                    placeholder="Equipment"
+                    {...form.register(`steps.${index}.equipment` as const)}
+                  />
                   <Input placeholder="Tip" {...form.register(`steps.${index}.tip` as const)} />
                 </div>
               </div>
@@ -528,7 +626,12 @@ export function RecipeForm({
           {form.formState.errors.steps?.message ? (
             <p className="text-xs text-destructive">{form.formState.errors.steps.message}</p>
           ) : null}
-          <Button type="button" variant="outline" size="sm" onClick={() => steps.append({ instruction: "" })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => steps.append({ instruction: "" })}
+          >
             <Plus className="h-4 w-4" />
             Add step
           </Button>

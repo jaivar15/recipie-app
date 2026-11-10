@@ -1,0 +1,339 @@
+-- Auto-derive "free from" dietary labels (Gluten Free, Dairy Free, etc.)
+-- from the allergens of a recipe's linked ingredients, instead of relying
+-- on the user to tick them by hand. Meal type (breakfast/lunch/dinner/
+-- snack) stays manual — it isn't derivable from ingredient data.
+--
+-- A label is only auto-applied when every ingredient line on the recipe is
+-- linked to a catalog ingredient (ingredient_id is not null) — an unlinked,
+-- free-text ingredient's allergen status is unknown, so we can't safely
+-- claim "free from" for the recipe as a whole.
+
+create or replace function public.auto_dietary_label_values()
+returns text[]
+language sql
+immutable
+as $$
+  select array[
+    'Gluten Free', 'Dairy Free', 'Egg Free', 'Peanut Free', 'Tree Nut Free',
+    'Soy Free', 'Fish Free', 'Shellfish Free', 'Sesame Free'
+  ];
+$$;
+
+create or replace function public.strip_auto_dietary_labels(p_labels text[])
+returns text[]
+language sql
+immutable
+as $$
+  select coalesce(array_agg(x), '{}')
+  from unnest(p_labels) x
+  where not (x = any(public.auto_dietary_label_values()));
+$$;
+
+create or replace function public.compute_auto_dietary_labels(p_recipe_id uuid)
+returns text[]
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_mapping jsonb := '{
+    "Gluten": "Gluten Free", "Dairy": "Dairy Free", "Eggs": "Egg Free",
+    "Peanuts": "Peanut Free", "Tree nuts": "Tree Nut Free", "Soy": "Soy Free",
+    "Fish": "Fish Free", "Shellfish": "Shellfish Free", "Sesame": "Sesame Free"
+  }'::jsonb;
+  v_total int;
+  v_linked int;
+  v_present text[];
+  v_result text[] := '{}';
+  v_entry record;
+begin
+  select count(*), count(ri.ingredient_id) into v_total, v_linked
+  from public.recipe_ingredients ri
+  where ri.recipe_id = p_recipe_id;
+
+  if v_total = 0 or v_linked < v_total then
+    return '{}';
+  end if;
+
+  select coalesce(array_agg(distinct a), '{}') into v_present
+  from public.recipe_ingredients ri
+  join public.ingredients i on i.id = ri.ingredient_id
+  cross join lateral unnest(i.allergens) as a
+  where ri.recipe_id = p_recipe_id;
+
+  for v_entry in select * from jsonb_each_text(v_mapping)
+  loop
+    if not (v_entry.key = any(v_present)) then
+      v_result := array_append(v_result, v_entry.value);
+    end if;
+  end loop;
+
+  return v_result;
+end;
+$$;
+
+create or replace function public.create_recipe(p_recipe jsonb, p_ingredients jsonb, p_steps jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_household_id uuid := nullif(p_recipe->>'household_id', '')::uuid;
+  v_visibility recipe_visibility := (p_recipe->>'visibility')::recipe_visibility;
+  v_recipe_id uuid;
+  v_ing jsonb;
+  v_step jsonb;
+  v_tag_id uuid;
+  v_pos int;
+  v_manual_labels text[];
+  v_verified_labels text[];
+  v_auto_labels text[];
+  v_final_labels text[];
+begin
+  if v_visibility = 'household' then
+    if v_household_id is null then
+      raise exception 'Household recipes must have a household_id';
+    end if;
+    if not public.has_household_role(v_household_id, 'editor') then
+      raise exception 'You do not have permission to add recipes to this household';
+    end if;
+  else
+    v_household_id := null;
+  end if;
+
+  v_manual_labels := public.strip_auto_dietary_labels(
+    coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'dietary_labels', '[]'::jsonb)) x), '{}')
+  );
+  v_verified_labels := public.strip_auto_dietary_labels(
+    coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'dietary_labels_verified', '[]'::jsonb)) x), '{}')
+  );
+
+  insert into public.recipes (
+    household_id, visibility, title, description, source, source_url, author_name,
+    prep_time_minutes, cook_time_minutes, resting_time_minutes, servings, serving_size,
+    finished_weight_grams, difficulty, cuisine, meal_type, cooking_method, equipment,
+    dietary_labels, dietary_labels_verified
+  ) values (
+    v_household_id, v_visibility,
+    p_recipe->>'title', nullif(p_recipe->>'description', ''), nullif(p_recipe->>'source', ''),
+    nullif(p_recipe->>'source_url', ''), nullif(p_recipe->>'author_name', ''),
+    nullif(p_recipe->>'prep_time_minutes', '')::int, nullif(p_recipe->>'cook_time_minutes', '')::int,
+    nullif(p_recipe->>'resting_time_minutes', '')::int,
+    coalesce(nullif(p_recipe->>'servings', '')::numeric, 4),
+    nullif(p_recipe->>'serving_size', ''), nullif(p_recipe->>'finished_weight_grams', '')::numeric,
+    nullif(p_recipe->>'difficulty', '')::recipe_difficulty, nullif(p_recipe->>'cuisine', ''),
+    coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'meal_type', '[]'::jsonb)) x), '{}'),
+    nullif(p_recipe->>'cooking_method', ''),
+    coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'equipment', '[]'::jsonb)) x), '{}'),
+    v_manual_labels, v_verified_labels
+  )
+  returning id into v_recipe_id;
+
+  v_pos := 0;
+  for v_ing in select * from jsonb_array_elements(coalesce(p_ingredients, '[]'::jsonb))
+  loop
+    insert into public.recipe_ingredients (recipe_id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id)
+    values (
+      v_recipe_id, v_pos, v_ing->>'ingredient_name',
+      nullif(v_ing->>'quantity', '')::numeric, nullif(v_ing->>'unit', '')::measurement_unit,
+      nullif(v_ing->>'preparation_note', ''), nullif(v_ing->>'brand', ''),
+      nullif(v_ing->>'ingredient_id', '')::uuid
+    );
+    v_pos := v_pos + 1;
+  end loop;
+
+  v_pos := 0;
+  for v_step in select * from jsonb_array_elements(coalesce(p_steps, '[]'::jsonb))
+  loop
+    insert into public.recipe_steps (recipe_id, position, instruction, duration_minutes, temperature_celsius, equipment, tip)
+    values (
+      v_recipe_id, v_pos, v_step->>'instruction',
+      nullif(v_step->>'duration_minutes', '')::int, nullif(v_step->>'temperature_celsius', '')::int,
+      nullif(v_step->>'equipment', ''), nullif(v_step->>'tip', '')
+    );
+    v_pos := v_pos + 1;
+  end loop;
+
+  for v_tag_id in select (x)::uuid from jsonb_array_elements_text(coalesce(p_recipe->'tag_ids', '[]'::jsonb)) x
+  loop
+    if public.can_view_tag(v_tag_id) then
+      insert into public.recipe_tags (recipe_id, tag_id) values (v_recipe_id, v_tag_id)
+      on conflict do nothing;
+    end if;
+  end loop;
+
+  v_auto_labels := public.compute_auto_dietary_labels(v_recipe_id);
+  v_final_labels := array(select distinct unnest(v_manual_labels || v_auto_labels));
+
+  update public.recipes
+  set
+    dietary_labels = v_final_labels,
+    dietary_labels_verified = (select coalesce(array_agg(x), '{}') from unnest(v_verified_labels) x where x = any(v_final_labels))
+  where id = v_recipe_id;
+
+  if v_visibility = 'household' then
+    perform public.log_activity(v_household_id, 'recipe_created', 'recipe', v_recipe_id,
+      jsonb_build_object('title', p_recipe->>'title'));
+  end if;
+
+  return v_recipe_id;
+end;
+$$;
+
+create or replace function public.update_recipe(p_recipe_id uuid, p_recipe jsonb, p_ingredients jsonb, p_steps jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_household_id uuid;
+  v_visibility recipe_visibility;
+  v_ing jsonb;
+  v_step jsonb;
+  v_tag_id uuid;
+  v_pos int;
+  v_manual_labels text[];
+  v_verified_labels text[];
+  v_auto_labels text[];
+  v_final_labels text[];
+begin
+  if not public.can_edit_recipe(p_recipe_id) then
+    raise exception 'You do not have permission to edit this recipe';
+  end if;
+
+  select household_id, visibility into v_household_id, v_visibility
+  from public.recipes where id = p_recipe_id;
+
+  v_manual_labels := public.strip_auto_dietary_labels(
+    coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'dietary_labels', '[]'::jsonb)) x), '{}')
+  );
+  v_verified_labels := public.strip_auto_dietary_labels(
+    coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'dietary_labels_verified', '[]'::jsonb)) x), '{}')
+  );
+
+  update public.recipes set
+    title = p_recipe->>'title',
+    description = nullif(p_recipe->>'description', ''),
+    source = nullif(p_recipe->>'source', ''),
+    source_url = nullif(p_recipe->>'source_url', ''),
+    author_name = nullif(p_recipe->>'author_name', ''),
+    prep_time_minutes = nullif(p_recipe->>'prep_time_minutes', '')::int,
+    cook_time_minutes = nullif(p_recipe->>'cook_time_minutes', '')::int,
+    resting_time_minutes = nullif(p_recipe->>'resting_time_minutes', '')::int,
+    servings = coalesce(nullif(p_recipe->>'servings', '')::numeric, 4),
+    serving_size = nullif(p_recipe->>'serving_size', ''),
+    finished_weight_grams = nullif(p_recipe->>'finished_weight_grams', '')::numeric,
+    difficulty = nullif(p_recipe->>'difficulty', '')::recipe_difficulty,
+    cuisine = nullif(p_recipe->>'cuisine', ''),
+    meal_type = coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'meal_type', '[]'::jsonb)) x), '{}'),
+    cooking_method = nullif(p_recipe->>'cooking_method', ''),
+    equipment = coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'equipment', '[]'::jsonb)) x), '{}'),
+    dietary_labels = v_manual_labels,
+    dietary_labels_verified = v_verified_labels
+  where id = p_recipe_id;
+
+  delete from public.recipe_ingredients where recipe_id = p_recipe_id;
+  v_pos := 0;
+  for v_ing in select * from jsonb_array_elements(coalesce(p_ingredients, '[]'::jsonb))
+  loop
+    insert into public.recipe_ingredients (recipe_id, position, ingredient_name, quantity, unit, preparation_note, brand, ingredient_id)
+    values (
+      p_recipe_id, v_pos, v_ing->>'ingredient_name',
+      nullif(v_ing->>'quantity', '')::numeric, nullif(v_ing->>'unit', '')::measurement_unit,
+      nullif(v_ing->>'preparation_note', ''), nullif(v_ing->>'brand', ''),
+      nullif(v_ing->>'ingredient_id', '')::uuid
+    );
+    v_pos := v_pos + 1;
+  end loop;
+
+  delete from public.recipe_steps where recipe_id = p_recipe_id;
+  v_pos := 0;
+  for v_step in select * from jsonb_array_elements(coalesce(p_steps, '[]'::jsonb))
+  loop
+    insert into public.recipe_steps (recipe_id, position, instruction, duration_minutes, temperature_celsius, equipment, tip)
+    values (
+      p_recipe_id, v_pos, v_step->>'instruction',
+      nullif(v_step->>'duration_minutes', '')::int, nullif(v_step->>'temperature_celsius', '')::int,
+      nullif(v_step->>'equipment', ''), nullif(v_step->>'tip', '')
+    );
+    v_pos := v_pos + 1;
+  end loop;
+
+  delete from public.recipe_tags where recipe_id = p_recipe_id;
+  for v_tag_id in select (x)::uuid from jsonb_array_elements_text(coalesce(p_recipe->'tag_ids', '[]'::jsonb)) x
+  loop
+    if public.can_view_tag(v_tag_id) then
+      insert into public.recipe_tags (recipe_id, tag_id) values (p_recipe_id, v_tag_id)
+      on conflict do nothing;
+    end if;
+  end loop;
+
+  v_auto_labels := public.compute_auto_dietary_labels(p_recipe_id);
+  v_final_labels := array(select distinct unnest(v_manual_labels || v_auto_labels));
+
+  update public.recipes
+  set
+    dietary_labels = v_final_labels,
+    dietary_labels_verified = (select coalesce(array_agg(x), '{}') from unnest(v_verified_labels) x where x = any(v_final_labels))
+  where id = p_recipe_id;
+
+  if v_visibility = 'household' then
+    perform public.log_activity(v_household_id, 'recipe_edited', 'recipe', p_recipe_id,
+      jsonb_build_object('title', p_recipe->>'title'));
+  end if;
+end;
+$$;
+
+create or replace function public.update_recipe_dietary_labels(
+  p_recipe_id uuid, p_labels text[], p_verified text[]
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_manual_labels text[];
+  v_auto_labels text[];
+  v_final_labels text[];
+begin
+  if not public.can_edit_recipe(p_recipe_id) then
+    raise exception 'You do not have permission to edit this recipe';
+  end if;
+
+  v_manual_labels := public.strip_auto_dietary_labels(p_labels);
+  v_auto_labels := public.compute_auto_dietary_labels(p_recipe_id);
+  v_final_labels := array(select distinct unnest(v_manual_labels || v_auto_labels));
+
+  if exists (select 1 from unnest(p_verified) v where not v = any(v_final_labels)) then
+    raise exception 'Cannot verify a label that is not applied';
+  end if;
+
+  update public.recipes
+  set dietary_labels = v_final_labels, dietary_labels_verified = p_verified
+  where id = p_recipe_id;
+end;
+$$;
+
+-- One-time backfill: recompute every existing recipe's dietary_labels now
+-- that "free from" labels are derived rather than manually ticked.
+do $$
+declare
+  r record;
+  v_auto_labels text[];
+  v_final_labels text[];
+begin
+  for r in select id, dietary_labels, dietary_labels_verified from public.recipes
+  loop
+    v_auto_labels := public.compute_auto_dietary_labels(r.id);
+    v_final_labels := array(select distinct unnest(public.strip_auto_dietary_labels(r.dietary_labels) || v_auto_labels));
+    update public.recipes
+    set
+      dietary_labels = v_final_labels,
+      dietary_labels_verified = (select coalesce(array_agg(x), '{}') from unnest(r.dietary_labels_verified) x where x = any(v_final_labels))
+    where id = r.id;
+  end loop;
+end;
+$$;

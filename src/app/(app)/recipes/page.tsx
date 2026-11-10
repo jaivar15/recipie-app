@@ -21,7 +21,7 @@ type MeasurementUnit = Database["public"]["Enums"]["measurement_unit"];
 
 const RECIPE_CARD_FIELDS = `
   id, title, visibility, difficulty, cuisine, prep_time_minutes, cook_time_minutes, servings, author_name,
-  dietary_labels, deleted_at, recipe_images(storage_path, is_primary),
+  meal_type, dietary_labels, deleted_at, recipe_images(storage_path, is_primary),
   recipe_tags(tag_id),
   recipe_ingredients(ingredient_name, quantity, unit, nutrition_override,
     ingredients(nutrition_reference_amount, nutrition_reference_unit, ingredient_nutrition(energy_kj, calories_kcal, protein_g, carbohydrate_g, fat_g, saturated_fat_g,
@@ -39,6 +39,7 @@ type RawRecipeRow = {
   cook_time_minutes: number | null;
   servings: number;
   author_name: string | null;
+  meal_type: string[];
   dietary_labels: string[];
   deleted_at: string | null;
   recipe_images: { storage_path: string; is_primary: boolean }[];
@@ -62,6 +63,7 @@ type Filters = {
   cuisine?: string;
   difficulty?: string;
   dietary?: string[];
+  mealType?: string[];
   maxTime?: number;
   minProtein?: number;
   maxCalories?: number;
@@ -81,6 +83,9 @@ function matchesFilters(r: RawRecipeRow, filters: Filters): boolean {
   if (filters.difficulty && r.difficulty !== filters.difficulty) return false;
   if (filters.dietary && filters.dietary.length > 0) {
     if (!filters.dietary.every((d) => r.dietary_labels.includes(d))) return false;
+  }
+  if (filters.mealType && filters.mealType.length > 0) {
+    if (!filters.mealType.some((mt) => r.meal_type.includes(mt))) return false;
   }
   if (filters.tag && !r.recipe_tags.some((t) => t.tag_id === filters.tag)) return false;
   if (filters.maxTime != null) {
@@ -138,6 +143,8 @@ async function toCardData(rows: RawRecipeRow[]): Promise<RecipeCardData[]> {
       cookTimeMinutes: r.cook_time_minutes,
       servings: r.servings,
       authorName: r.author_name,
+      mealType: r.meal_type,
+      dietaryLabels: r.dietary_labels,
       imageUrl: path ? (urlMap[path] ?? null) : null,
     };
   });
@@ -157,6 +164,7 @@ export default async function RecipeLibraryPage({
     cuisine: sp.cuisine,
     difficulty: sp.difficulty,
     dietary: sp.dietary?.split(",").filter(Boolean),
+    mealType: sp.mealType?.split(",").filter(Boolean),
     maxTime: sp.maxTime ? Number(sp.maxTime) : undefined,
     minProtein: sp.minProtein ? Number(sp.minProtein) : undefined,
     maxCalories: sp.maxCalories ? Number(sp.maxCalories) : undefined,
