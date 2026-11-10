@@ -4,6 +4,7 @@ import { getHouseholdContext } from "@/lib/households/context";
 import { createClient } from "@/lib/supabase/server";
 import {
   calculateRecipeNutrition,
+  calculateIngredientBreakdown,
   divideNutrients,
   type RecipeIngredientForCalc,
   type NutrientSet,
@@ -77,6 +78,19 @@ export default async function NutritionPage({
       perServing.carbohydrate_g.complete &&
       perServing.fat_g.complete;
 
+    const ingredients = calculateIngredientBreakdown(inputs).map((line, index) => {
+      const perServingNutrients = divideNutrients(line.nutrients, r.servings);
+      return {
+        id: `${r.id}-${index}`,
+        name: line.ingredientName,
+        caloriesPerServing: perServingNutrients.calories_kcal.value,
+        proteinPerServing: perServingNutrients.protein_g.value,
+        carbsPerServing: perServingNutrients.carbohydrate_g.value,
+        fatPerServing: perServingNutrients.fat_g.value,
+        resolved: line.resolved,
+      };
+    });
+
     return {
       id: r.id,
       title: r.title,
@@ -87,6 +101,7 @@ export default async function NutritionPage({
       fatPerServing: perServing.fat_g.value,
       fibrePerServing: perServing.fibre_g.value,
       complete,
+      ingredients,
     };
   });
 

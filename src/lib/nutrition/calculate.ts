@@ -158,6 +158,49 @@ export function calculateRecipeNutrition(
   return { nutrients, unresolvedIngredientNames };
 }
 
+export interface IngredientNutritionLine {
+  id: string;
+  ingredientName: string;
+  /** False when the amount couldn't be resolved (missing quantity, unit, or conversion) — nutrients are all null. */
+  resolved: boolean;
+  nutrients: Record<NutrientKey, NutrientResult>;
+}
+
+/**
+ * Same per-line math as calculateRecipeNutrition's internal loop, but
+ * returned per ingredient instead of summed — for breakdown views (e.g.
+ * "which ingredient is driving the calories in this recipe").
+ */
+export function calculateIngredientBreakdown(
+  ingredients: RecipeIngredientForCalc[],
+): IngredientNutritionLine[] {
+  return ingredients.map((line) => {
+    const amount = resolveReferenceAmount(line.quantity, line.unit, line.conversions, line.nutritionReferenceUnit);
+    if (amount == null) {
+      return {
+        id: line.id,
+        ingredientName: line.ingredientName,
+        resolved: false,
+        nutrients: Object.fromEntries(
+          NUTRIENT_KEYS.map((k) => [k, { value: null, complete: false }]),
+        ) as Record<NutrientKey, NutrientResult>,
+      };
+    }
+
+    const referenceAmount = line.nutritionReferenceAmount ?? 100;
+    const source = line.nutritionOverride ?? line.ingredientNutrition;
+    const nutrients = Object.fromEntries(
+      NUTRIENT_KEYS.map((key) => {
+        const perReference = source?.[key];
+        if (perReference == null) return [key, { value: null, complete: false }];
+        return [key, { value: Math.round((amount / referenceAmount) * perReference * 100) / 100, complete: true }];
+      }),
+    ) as Record<NutrientKey, NutrientResult>;
+
+    return { id: line.id, ingredientName: line.ingredientName, resolved: true, nutrients };
+  });
+}
+
 export function divideNutrients(
   totals: Record<NutrientKey, NutrientResult>,
   divisor: number,
