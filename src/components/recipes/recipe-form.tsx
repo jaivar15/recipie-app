@@ -83,6 +83,10 @@ export function RecipeForm({
     (AUTO_DIETARY_LABELS as readonly string[]).includes(l),
   );
 
+  function handleInvalid() {
+    setSubmitError("Some fields need attention before this recipe can be saved — check the highlighted ones below.");
+  }
+
   function handleSubmit(values: RecipeFormValues) {
     setSubmitError(null);
     startTransition(async () => {
@@ -107,7 +111,7 @@ export function RecipeForm({
   }
 
   return (
-    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+    <form onSubmit={form.handleSubmit(handleSubmit, handleInvalid)} className="space-y-6">
       {submitError ? (
         <Alert variant="destructive">
           <AlertDescription>{submitError}</AlertDescription>
@@ -528,58 +532,72 @@ export function RecipeForm({
                   </Button>
                 </div>
                 {isHeader ? (
-                  <div className="flex flex-1 items-center gap-2">
-                    <Heading className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <Input
-                      placeholder="Section name, e.g. Black Sesame Paste"
-                      className="font-medium"
-                      {...form.register(`ingredients.${index}.ingredient_name` as const)}
-                    />
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Heading className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Input
+                        placeholder="Section name, e.g. Black Sesame Paste"
+                        className="font-medium"
+                        {...form.register(`ingredients.${index}.ingredient_name` as const)}
+                      />
+                    </div>
+                    {form.formState.errors.ingredients?.[index]?.ingredient_name?.message ? (
+                      <p className="text-xs text-destructive">
+                        {form.formState.errors.ingredients[index]?.ingredient_name?.message}
+                      </p>
+                    ) : null}
                   </div>
                 ) : (
-                  <div className="grid flex-1 gap-2 sm:grid-cols-[1fr_90px_100px_1fr]">
-                    <IngredientAutocomplete
-                      value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
-                      linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
-                      onChange={(name, id) => {
-                        form.setValue(`ingredients.${index}.ingredient_name`, name);
-                        form.setValue(`ingredients.${index}.ingredient_id`, id);
-                      }}
-                    />
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="Qty"
-                      {...form.register(`ingredients.${index}.quantity` as const)}
-                    />
-                    <Select
-                      value={form.watch(`ingredients.${index}.unit`) ?? ""}
-                      onValueChange={(v) =>
-                        form.setValue(
-                          `ingredients.${index}.unit`,
-                          v as RecipeFormValues["ingredients"][number]["unit"],
-                        )
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Unit">
-                          {(value: (typeof MEASUREMENT_UNITS)[number] | null) =>
-                            value ? UNIT_LABELS[value] : "Unit"
-                          }
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MEASUREMENT_UNITS.map((u) => (
-                          <SelectItem key={u} value={u}>
-                            {UNIT_LABELS[u]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Prep note, e.g. finely chopped"
-                      {...form.register(`ingredients.${index}.preparation_note` as const)}
-                    />
+                  <div className="flex-1 space-y-1">
+                    <div className="grid gap-2 sm:grid-cols-[1fr_90px_100px_1fr]">
+                      <IngredientAutocomplete
+                        value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
+                        linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
+                        onChange={(name, id) => {
+                          form.setValue(`ingredients.${index}.ingredient_name`, name);
+                          form.setValue(`ingredients.${index}.ingredient_id`, id);
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        step="any"
+                        placeholder="Qty"
+                        {...form.register(`ingredients.${index}.quantity` as const)}
+                      />
+                      <Select
+                        value={form.watch(`ingredients.${index}.unit`) ?? ""}
+                        onValueChange={(v) =>
+                          form.setValue(
+                            `ingredients.${index}.unit`,
+                            v as RecipeFormValues["ingredients"][number]["unit"],
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Unit">
+                            {(value: (typeof MEASUREMENT_UNITS)[number] | null) =>
+                              value ? UNIT_LABELS[value] : "Unit"
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MEASUREMENT_UNITS.map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {UNIT_LABELS[u]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Prep note, e.g. finely chopped"
+                        {...form.register(`ingredients.${index}.preparation_note` as const)}
+                      />
+                    </div>
+                    {form.formState.errors.ingredients?.[index]?.ingredient_name?.message ? (
+                      <p className="text-xs text-destructive">
+                        {form.formState.errors.ingredients[index]?.ingredient_name?.message}
+                      </p>
+                    ) : null}
                   </div>
                 )}
                 <Button
@@ -659,13 +677,20 @@ export function RecipeForm({
                     </Button>
                   </div>
                   {isHeader ? (
-                    <div className="flex flex-1 items-center gap-2">
-                      <Heading className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      <Input
-                        placeholder="Section name, e.g. Ice Cream"
-                        className="font-medium"
-                        {...form.register(`steps.${index}.instruction` as const)}
-                      />
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Heading className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <Input
+                          placeholder="Section name, e.g. Ice Cream"
+                          className="font-medium"
+                          {...form.register(`steps.${index}.instruction` as const)}
+                        />
+                      </div>
+                      {form.formState.errors.steps?.[index]?.instruction?.message ? (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.steps[index]?.instruction?.message}
+                        </p>
+                      ) : null}
                     </div>
                   ) : (
                     <>
@@ -678,6 +703,11 @@ export function RecipeForm({
                           rows={2}
                           {...form.register(`steps.${index}.instruction` as const)}
                         />
+                        {form.formState.errors.steps?.[index]?.instruction?.message ? (
+                          <p className="text-xs text-destructive">
+                            {form.formState.errors.steps[index]?.instruction?.message}
+                          </p>
+                        ) : null}
                         <div className="grid gap-2 sm:grid-cols-4">
                           <Input
                             type="number"
