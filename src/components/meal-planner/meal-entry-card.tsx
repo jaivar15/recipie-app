@@ -29,6 +29,9 @@ export function MealEntryCard({
   const [isPending, startTransition] = useTransition();
 
   const kcal = formatMacroValue(macros.calories_kcal.value, macros.calories_kcal.complete);
+  const protein = formatMacroValue(macros.protein_g.value, macros.protein_g.complete);
+  const carbs = formatMacroValue(macros.carbohydrate_g.value, macros.carbohydrate_g.complete);
+  const fat = formatMacroValue(macros.fat_g.value, macros.fat_g.complete);
 
   const content = (
     <div className="space-y-1">
@@ -38,9 +41,26 @@ export function MealEntryCard({
         {memberNames.length > 0 ? ` · ${memberNames.join(", ")}` : ""}
       </p>
       {kcal != null ? (
-        <Badge variant="secondary" className="font-medium tabular-nums">
-          {kcal} kcal
-        </Badge>
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="secondary" className="font-medium tabular-nums">
+            {kcal} kcal
+          </Badge>
+          {protein != null ? (
+            <Badge variant="outline" className="font-normal tabular-nums">
+              P {protein}g
+            </Badge>
+          ) : null}
+          {carbs != null ? (
+            <Badge variant="outline" className="font-normal tabular-nums">
+              C {carbs}g
+            </Badge>
+          ) : null}
+          {fat != null ? (
+            <Badge variant="outline" className="font-normal tabular-nums">
+              F {fat}g
+            </Badge>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
