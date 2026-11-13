@@ -541,9 +541,6 @@ export function RecipeForm({
                     <IngredientAutocomplete
                       value={form.watch(`ingredients.${index}.ingredient_name`) ?? ""}
                       linkedId={form.watch(`ingredients.${index}.ingredient_id`)}
-                      householdId={
-                        visibility === "household" ? (form.watch("household_id") ?? null) : null
-                      }
                       onChange={(name, id) => {
                         form.setValue(`ingredients.${index}.ingredient_name`, name);
                         form.setValue(`ingredients.${index}.ingredient_id`, id);

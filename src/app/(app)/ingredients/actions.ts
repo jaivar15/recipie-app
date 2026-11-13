@@ -50,21 +50,19 @@ export async function deleteIngredientAction(ingredientId: string) {
   redirect("/ingredients");
 }
 
-export async function searchIngredientsAction(query: string, householdId: string | null) {
+export async function searchIngredientsAction(query: string) {
+  // No app-level visibility filter here — ingredients_select RLS already
+  // restricts results to the caller's own personal ingredients plus
+  // household ones for every household they belong to, which is more
+  // correct than re-deriving "which household" app-side (a previous
+  // version only showed household ingredients when a specific household
+  // was passed in, silently hiding them while editing a personal recipe).
   const supabase = await createClient();
-  let builder = supabase
+  const { data, error } = await supabase
     .from("ingredients")
     .select("id, name, visibility, state, brand")
     .ilike("name", `%${query}%`)
     .limit(10);
-
-  if (householdId) {
-    builder = builder.or(`visibility.eq.personal,household_id.eq.${householdId}`);
-  } else {
-    builder = builder.eq("visibility", "personal");
-  }
-
-  const { data, error } = await builder;
   if (error) throw new Error(error.message);
   return data;
 }
