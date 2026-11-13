@@ -7,7 +7,7 @@ export type SettingsActionState = { error: string | null; success?: boolean };
 
 export async function updateProfileAction(
   _prev: SettingsActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<SettingsActionState> {
   const displayName = String(formData.get("displayName") ?? "").trim();
   const measurementSystem = String(formData.get("measurementSystem") ?? "metric");
@@ -33,7 +33,7 @@ export async function updateProfileAction(
 
 export async function updateHouseholdNameAction(
   _prev: SettingsActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<SettingsActionState> {
   const householdId = String(formData.get("householdId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -50,6 +50,13 @@ export async function updateHouseholdNameAction(
 export async function archiveHouseholdAction(householdId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("archive_household", { p_household_id: householdId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+}
+
+export async function restoreHouseholdAction(householdId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("restore_household", { p_household_id: householdId });
   if (error) throw new Error(error.message);
   revalidatePath("/", "layout");
 }

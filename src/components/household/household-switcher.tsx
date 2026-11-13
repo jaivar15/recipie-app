@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 import { ChevronsUpDown, Home, Plus } from "lucide-react";
 import { setActiveHouseholdAction, createHouseholdAction } from "@/app/(app)/actions";
 import type { HouseholdMembership } from "@/lib/households/context";
@@ -26,11 +27,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+
+function CreateHouseholdSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? "Creating…" : "Create household"}
+    </Button>
+  );
+}
 
 function initials(name: string) {
   return name
@@ -70,14 +76,18 @@ export function HouseholdSwitcher({
                 {active?.householdName ?? "No household yet"}
               </span>
               {active ? (
-                <span className="truncate text-xs text-muted-foreground capitalize">{active.role}</span>
+                <span className="truncate text-xs text-muted-foreground capitalize">
+                  {active.role}
+                </span>
               ) : null}
             </div>
             <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64" align="start">
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Your households</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Your households
+              </DropdownMenuLabel>
               {households.map((h) => (
                 <DropdownMenuItem
                   key={h.householdId}
@@ -87,7 +97,9 @@ export function HouseholdSwitcher({
                 >
                   <Avatar className="h-5 w-5 rounded-sm">
                     <AvatarImage src={h.imageUrl ?? undefined} />
-                    <AvatarFallback className="rounded-sm text-[10px]">{initials(h.householdName)}</AvatarFallback>
+                    <AvatarFallback className="rounded-sm text-[10px]">
+                      {initials(h.householdName)}
+                    </AvatarFallback>
                   </Avatar>
                   <span className="truncate">{h.householdName}</span>
                 </DropdownMenuItem>
@@ -108,15 +120,21 @@ export function HouseholdSwitcher({
             <DialogHeader>
               <DialogTitle>Create a household</DialogTitle>
               <DialogDescription>
-                Give your family&apos;s shared recipe vault a name. You can invite members afterwards.
+                Give your family&apos;s shared recipe vault a name. You can invite members
+                afterwards.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2 py-4">
               <Label htmlFor="household-name">Household name</Label>
-              <Input id="household-name" name="name" placeholder="The Jain Family Kitchen" required />
+              <Input
+                id="household-name"
+                name="name"
+                placeholder="The Jain Family Kitchen"
+                required
+              />
             </div>
             <DialogFooter>
-              <Button type="submit">Create household</Button>
+              <CreateHouseholdSubmitButton />
             </DialogFooter>
           </form>
         </DialogContent>
@@ -139,10 +157,15 @@ export function CreateHouseholdTrigger({ children }: { children: React.ReactElem
           </DialogHeader>
           <div className="space-y-2 py-4">
             <Label htmlFor="household-name-2">Household name</Label>
-            <Input id="household-name-2" name="name" placeholder="The Jain Family Kitchen" required />
+            <Input
+              id="household-name-2"
+              name="name"
+              placeholder="The Jain Family Kitchen"
+              required
+            />
           </div>
           <DialogFooter>
-            <Button type="submit">Create household</Button>
+            <CreateHouseholdSubmitButton />
           </DialogFooter>
         </form>
       </DialogContent>

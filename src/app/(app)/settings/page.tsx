@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { HouseholdSettingsForm } from "@/components/settings/household-settings-form";
+import { RestoreHouseholdButton } from "@/components/settings/restore-household-button";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -17,6 +18,14 @@ export default async function SettingsPage() {
     .select("measurement_system")
     .eq("id", ctx.userId)
     .single();
+
+  const { data: deletedHouseholds } = await supabase
+    .from("households")
+    .select("id, name, deleted_at")
+    .eq("owner_id", ctx.userId)
+    .not("deleted_at", "is", null)
+    .gt("deleted_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+    .order("deleted_at", { ascending: false });
 
   const isOwner = ctx.activeHousehold?.role === "owner";
 
@@ -56,7 +65,9 @@ export default async function SettingsPage() {
               <CardHeader>
                 <CardTitle>{ctx.activeHousehold.householdName}</CardTitle>
                 <CardDescription>
-                  {isOwner ? "Manage this household's name and danger zone." : "Only the owner can change these settings."}
+                  {isOwner
+                    ? "Manage this household's name and danger zone."
+                    : "Only the owner can change these settings."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -81,8 +92,8 @@ export default async function SettingsPage() {
               <CardHeader>
                 <CardTitle>Household backup</CardTitle>
                 <CardDescription>
-                  Download every household recipe, tag and collection as a single JSON file — useful for backups or
-                  moving to another system.
+                  Download every household recipe, tag and collection as a single JSON file — useful
+                  for backups or moving to another system.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -92,13 +103,50 @@ export default async function SettingsPage() {
                     Download household backup
                   </Button>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Only the household owner can export a full backup.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Only the household owner can export a full backup.
+                  </p>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
         ) : null}
       </Tabs>
+
+      {deletedHouseholds && deletedHouseholds.length > 0 ? (
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle>Recently deleted households</CardTitle>
+            <CardDescription>
+              Restorable for 30 days after deletion, then permanently removed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {deletedHouseholds.map((h) => {
+                const daysLeft = Math.max(
+                  0,
+                  30 -
+                    Math.floor(
+                      (Date.now() - new Date(h.deleted_at!).getTime()) / (24 * 60 * 60 * 1000),
+                    ),
+                );
+                return (
+                  <li key={h.id} className="flex items-center justify-between text-sm">
+                    <span>
+                      <span className="font-medium">{h.name}</span>{" "}
+                      <span className="text-muted-foreground">
+                        — {daysLeft} day{daysLeft === 1 ? "" : "s"} left to restore
+                      </span>
+                    </span>
+                    <RestoreHouseholdButton householdId={h.id} />
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

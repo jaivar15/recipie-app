@@ -44,8 +44,9 @@ export async function getHouseholdContext(): Promise<HouseholdContext | null> {
 
   const { data: memberships } = await supabase
     .from("household_members")
-    .select("role, households(id, name, image_url)")
-    .eq("user_id", user.id);
+    .select("role, households!inner(id, name, image_url, deleted_at)")
+    .eq("user_id", user.id)
+    .is("households.deleted_at", null);
 
   const households: HouseholdMembership[] = (memberships ?? [])
     .filter((m) => m.households !== null)
