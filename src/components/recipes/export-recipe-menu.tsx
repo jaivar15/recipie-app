@@ -17,11 +17,11 @@ export function ExportRecipeMenu({ recipeId }: { recipeId: string }) {
         Export
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => window.open(`/recipes/${recipeId}/export?format=json`, "_blank")}>
+        <DropdownMenuItem onClick={() => window.open(`/recipes/${recipeId}/export?format=json`, "_blank")}>
           <FileJson className="h-4 w-4" />
           Export as JSON
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => window.open(`/recipes/${recipeId}/export?format=csv`, "_blank")}>
+        <DropdownMenuItem onClick={() => window.open(`/recipes/${recipeId}/export?format=csv`, "_blank")}>
           <FileSpreadsheet className="h-4 w-4" />
           Export as CSV
         </DropdownMenuItem>

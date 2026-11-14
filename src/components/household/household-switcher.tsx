@@ -92,7 +92,7 @@ export function HouseholdSwitcher({
                 <DropdownMenuItem
                   key={h.householdId}
                   disabled={isPending}
-                  onSelect={() => startTransition(() => setActiveHouseholdAction(h.householdId))}
+                  onClick={() => startTransition(() => setActiveHouseholdAction(h.householdId))}
                   className="gap-2"
                 >
                   <Avatar className="h-5 w-5 rounded-sm">
@@ -106,7 +106,7 @@ export function HouseholdSwitcher({
               ))}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setDialogOpen(true)} className="gap-2">
+            <DropdownMenuItem onClick={() => setDialogOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />
               Create household
             </DropdownMenuItem>

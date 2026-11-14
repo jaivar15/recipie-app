@@ -79,7 +79,7 @@ export function MemberRow({
           <DropdownMenuContent align="end">
             {role === "viewer" ? (
               <DropdownMenuItem
-                onSelect={() =>
+                onClick={() =>
                   startTransition(() => changeMemberRoleAction(householdId, userId, "editor"))
                 }
               >
@@ -87,18 +87,18 @@ export function MemberRow({
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem
-                onSelect={() =>
+                onClick={() =>
                   startTransition(() => changeMemberRoleAction(householdId, userId, "viewer"))
                 }
               >
                 Make viewer
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem onSelect={() => setConfirmAction("transfer")}>
+            <DropdownMenuItem onClick={() => setConfirmAction("transfer")}>
               Transfer ownership
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onSelect={() => setConfirmAction("remove")}>
+            <DropdownMenuItem variant="destructive" onClick={() => setConfirmAction("remove")}>
               Remove from household
             </DropdownMenuItem>
           </DropdownMenuContent>
