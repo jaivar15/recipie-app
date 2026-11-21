@@ -39,6 +39,7 @@ export function FoodDiaryEntryRow({
       <td className="px-3 py-2 text-right text-sm tabular-nums">{cell("protein_g")}</td>
       <td className="px-3 py-2 text-right text-sm tabular-nums">{cell("carbohydrate_g")}</td>
       <td className="px-3 py-2 text-right text-sm tabular-nums">{cell("fat_g")}</td>
+      <td className="px-3 py-2 text-right text-sm tabular-nums">{cell("fibre_g")}</td>
       <td className="px-3 py-2">
         <div className="flex justify-end gap-1">
           <Button

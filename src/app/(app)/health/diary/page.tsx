@@ -19,6 +19,7 @@ const TABLE_MACRO_COLUMNS: { key: MacroKey; label: string }[] = [
   { key: "protein_g", label: "Protein (g)" },
   { key: "carbohydrate_g", label: "Carbs (g)" },
   { key: "fat_g", label: "Fat (g)" },
+  { key: "fibre_g", label: "Fibre (g)" },
 ];
 
 type FoodDiaryMealType = Database["public"]["Enums"]["food_diary_meal_type"];
@@ -258,7 +259,7 @@ export default async function FoodDiaryPage({
                 return (
                   <Fragment key={mt}>
                     <tr className="bg-primary/10">
-                      <td colSpan={6} className="px-3 py-1.5 font-semibold text-primary">
+                      <td colSpan={7} className="px-3 py-1.5 font-semibold text-primary">
                         {MEAL_LABELS[mt]}
                       </td>
                       <td className="px-2 py-1.5 text-right">
@@ -284,7 +285,7 @@ export default async function FoodDiaryPage({
                       ))
                     ) : (
                       <tr className="border-b">
-                        <td colSpan={7} className="px-3 py-2 text-xs text-muted-foreground">
+                        <td colSpan={8} className="px-3 py-2 text-xs text-muted-foreground">
                           Nothing logged
                         </td>
                       </tr>
