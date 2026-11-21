@@ -1,18 +1,25 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { NotebookPen, ChevronLeft, ChevronRight } from "lucide-react";
 import { getHealthContext } from "@/lib/health/context";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AddFoodDiaryEntryDialog } from "@/components/health/add-food-diary-entry-dialog";
 import { FoodDiaryEntryRow } from "@/components/health/food-diary-entry-row";
 import { RepeatDayButton } from "@/components/health/repeat-day-button";
 import { FrequentFoodsMenu, type FrequentFood } from "@/components/health/frequent-foods-menu";
 import { macrosFromSnapshotRow, sumMacros } from "@/lib/health/food-diary";
 import { formatMacroValue } from "@/lib/nutrition/format";
-import { NUTRIENT_LABELS, MACRO_KEYS, type MacroKey } from "@/lib/nutrition/calculate";
+import { type MacroKey } from "@/lib/nutrition/calculate";
 import type { Database } from "@/lib/types/database";
+
+const TABLE_MACRO_COLUMNS: { key: MacroKey; label: string }[] = [
+  { key: "calories_kcal", label: "Calories (kcal)" },
+  { key: "protein_g", label: "Protein (g)" },
+  { key: "carbohydrate_g", label: "Carbs (g)" },
+  { key: "fat_g", label: "Fat (g)" },
+];
 
 type FoodDiaryMealType = Database["public"]["Enums"]["food_diary_meal_type"];
 const MEAL_ORDER: FoodDiaryMealType[] = ["breakfast", "lunch", "dinner", "snack", "drink"];
@@ -23,14 +30,6 @@ const MEAL_LABELS: Record<FoodDiaryMealType, string> = {
   snack: "Snack",
   drink: "Drink",
 };
-const SHORT_MACRO_LABELS: Record<MacroKey, string> = {
-  calories_kcal: "Cal",
-  protein_g: "P",
-  carbohydrate_g: "C",
-  fat_g: "F",
-  fibre_g: "Fb",
-};
-
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -230,76 +229,96 @@ export default async function FoodDiaryPage({
         </div>
       </div>
 
-      <div className="space-y-3">
-        {MEAL_ORDER.map((mt) => {
-          const mealEntries = entries.filter((e) => e.mealType === mt);
-          return (
-            <div key={mt} className="space-y-2 rounded-lg border p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">{MEAL_LABELS[mt]}</p>
-                <AddFoodDiaryEntryDialog
-                  entryDate={entryDate}
-                  mealType={mt}
-                  mealLabel={MEAL_LABELS[mt]}
-                  recipes={recipes}
-                  ingredients={ingredients}
-                />
-              </div>
-              {mealEntries.length > 0 ? (
-                <div className="space-y-2">
-                  {mealEntries.map((e) => (
-                    <FoodDiaryEntryRow
-                      key={e.id}
-                      id={e.id}
-                      title={e.title}
-                      quantityLabel={e.quantityLabel}
-                      macros={e.macros}
-                      today={today}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Nothing logged</p>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
       {entries.length === 0 ? (
         <EmptyState
           icon={NotebookPen}
           title="Nothing logged for this day"
-          description="Add a recipe, an ingredient, or a quick custom entry to any meal above."
+          description="Add a recipe, an ingredient, or a quick custom entry to any meal below."
         />
-      ) : (
-        <div className="rounded-lg border bg-muted/40 p-3">
-          <p className="mb-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Day total
-          </p>
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            {dayTotal.calories_kcal.value != null ? (
-              <p className="font-semibold tabular-nums">
-                {formatMacroValue(dayTotal.calories_kcal.value, dayTotal.calories_kcal.complete)}
-                <span className="ml-1 text-xs font-normal text-muted-foreground">kcal</span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Calories unknown</p>
-            )}
-            <div className="flex flex-wrap gap-1.5">
-              {MACRO_KEYS.filter((k) => k !== "calories_kcal" && dayTotal[k].value != null).map(
-                (k) => (
-                  <Badge key={k} variant="outline" className="font-normal tabular-nums">
-                    {SHORT_MACRO_LABELS[k]}{" "}
-                    {formatMacroValue(dayTotal[k].value, dayTotal[k].complete)}
-                    {NUTRIENT_LABELS[k].unit}
-                  </Badge>
-                ),
-              )}
-            </div>
-          </div>
+      ) : null}
+
+      <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full min-w-[640px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b bg-muted/40 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                <th className="px-3 py-2">Food or recipe</th>
+                <th className="px-3 py-2">Serving size</th>
+                {TABLE_MACRO_COLUMNS.map((c) => (
+                  <th key={c.key} className="px-3 py-2 text-right">
+                    {c.label}
+                  </th>
+                ))}
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MEAL_ORDER.map((mt) => {
+                const mealEntries = entries.filter((e) => e.mealType === mt);
+                const subtotal = sumMacros(mealEntries.map((e) => e.macros));
+                return (
+                  <Fragment key={mt}>
+                    <tr className="bg-primary/10">
+                      <td colSpan={6} className="px-3 py-1.5 font-semibold text-primary">
+                        {MEAL_LABELS[mt]}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        <AddFoodDiaryEntryDialog
+                          entryDate={entryDate}
+                          mealType={mt}
+                          mealLabel={MEAL_LABELS[mt]}
+                          recipes={recipes}
+                          ingredients={ingredients}
+                        />
+                      </td>
+                    </tr>
+                    {mealEntries.length > 0 ? (
+                      mealEntries.map((e) => (
+                        <FoodDiaryEntryRow
+                          key={e.id}
+                          id={e.id}
+                          title={e.title}
+                          quantityLabel={e.quantityLabel}
+                          macros={e.macros}
+                          today={today}
+                        />
+                      ))
+                    ) : (
+                      <tr className="border-b">
+                        <td colSpan={7} className="px-3 py-2 text-xs text-muted-foreground">
+                          Nothing logged
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="border-b bg-muted/30 font-medium">
+                      <td colSpan={2} className="px-3 py-1.5">
+                        {MEAL_LABELS[mt]} subtotal
+                      </td>
+                      {TABLE_MACRO_COLUMNS.map((c) => (
+                        <td key={c.key} className="px-3 py-1.5 text-right tabular-nums">
+                          {formatMacroValue(subtotal[c.key].value, subtotal[c.key].complete) ?? "–"}
+                        </td>
+                      ))}
+                      <td />
+                    </tr>
+                  </Fragment>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-primary text-primary-foreground">
+                <td colSpan={2} className="px-3 py-2.5 font-semibold">
+                  Daily total
+                </td>
+                {TABLE_MACRO_COLUMNS.map((c) => (
+                  <td key={c.key} className="px-3 py-2.5 text-right font-semibold tabular-nums">
+                    {formatMacroValue(dayTotal[c.key].value, dayTotal[c.key].complete) ?? "–"}
+                  </td>
+                ))}
+                <td />
+              </tr>
+            </tfoot>
+          </table>
         </div>
-      )}
     </div>
   );
 }
