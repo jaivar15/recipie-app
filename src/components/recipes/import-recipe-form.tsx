@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Link as LinkIcon, FileJson, Loader2 } from "lucide-react";
-import { importFromUrlAction, importFromJsonAction } from "@/app/(app)/recipes/import/actions";
+import { useRef, useState, useTransition } from "react";
+import { Link as LinkIcon, FileJson, Loader2, Sheet } from "lucide-react";
+import {
+  importFromUrlAction,
+  importFromJsonAction,
+  importFromCsvAction,
+} from "@/app/(app)/recipes/import/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +23,20 @@ import {
 
 type HouseholdOption = { id: string; name: string };
 
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
 export function ImportRecipeForm({ households }: { households: HouseholdOption[] }) {
   const [url, setUrl] = useState("");
   const [json, setJson] = useState("");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState<"personal" | "household">(
     households.length > 0 ? "household" : "personal"
   );
@@ -86,6 +101,7 @@ export function ImportRecipeForm({ households }: { households: HouseholdOption[]
       <Tabs defaultValue="url">
         <TabsList>
           <TabsTrigger value="url">From a URL</TabsTrigger>
+          <TabsTrigger value="csv">From a CSV</TabsTrigger>
           <TabsTrigger value="json">From JSON</TabsTrigger>
         </TabsList>
         <TabsContent value="url" className="space-y-4 pt-4">
@@ -108,6 +124,41 @@ export function ImportRecipeForm({ households }: { households: HouseholdOption[]
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
             Import from URL
+          </Button>
+        </TabsContent>
+        <TabsContent value="csv" className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="import-csv">Recipe CSV</Label>
+            <Input
+              id="import-csv"
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              One row per recipe, with a <code>Title</code> column and optional <code>Description</code>,
+              <code>Servings</code>, <code>Prep Time</code>, <code>Cook Time</code>, <code>Ingredients</code> and
+              <code>Steps</code> columns — put one ingredient/step per line within its cell. Start a line with
+              <code>#</code> (e.g. <code># Sauce</code>) to make it a section header instead of a regular
+              ingredient/step. Multiple rows import all of them at once.
+            </p>
+          </div>
+          {visibilityControls}
+          <Button
+            disabled={!csvFile || isPending || (visibility === "household" && !householdId)}
+            onClick={() =>
+              run(async () => {
+                if (!csvFile) return;
+                const csvText = await readFileAsText(csvFile);
+                await importFromCsvAction(csvText, visibility, visibility === "household" ? householdId : null);
+                setCsvFile(null);
+                if (csvInputRef.current) csvInputRef.current.value = "";
+              })
+            }
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sheet className="h-4 w-4" />}
+            Import from CSV
           </Button>
         </TabsContent>
         <TabsContent value="json" className="space-y-4 pt-4">

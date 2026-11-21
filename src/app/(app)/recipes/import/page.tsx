@@ -14,8 +14,8 @@ export default async function ImportRecipePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Import a recipe</h1>
         <p className="text-sm text-muted-foreground">
-          Import from a recipe website URL, or paste a JSON export from this app (or another Family Recipe Vault
-          household).
+          Import from a recipe website URL, a CSV spreadsheet, or paste a JSON export from this app
+          (or another Family Recipe Vault household).
         </p>
       </div>
       <ImportRecipeForm households={editableHouseholds} />

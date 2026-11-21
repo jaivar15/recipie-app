@@ -22,7 +22,20 @@ export type ParsedIngredient = {
   quantity: number | null;
   unit: MeasurementUnit | null;
   preparation_note: string | null;
+  is_section_header?: boolean;
 };
+
+/**
+ * A line starting with "#" (e.g. "# Sauce") is a section header, not an
+ * ingredient/step — same convention across CSV, photo, and JSON import.
+ */
+export function isHeaderLine(raw: string): boolean {
+  return raw.trim().startsWith("#");
+}
+
+export function stripHeaderMarker(raw: string): string {
+  return raw.trim().replace(/^#+\s*/, "");
+}
 
 /** Best-effort parse of a free-text ingredient line into qty/unit/name — only
  * extracts what's textually present, never infers or fabricates values. */
@@ -105,7 +118,7 @@ export type ParsedRecipe = {
   cookTimeMinutes: number | null;
   servings: number | null;
   ingredients: ParsedIngredient[];
-  steps: { instruction: string }[];
+  steps: { instruction: string; is_section_header?: boolean }[];
 };
 
 /** Extracts the first schema.org Recipe node from a page's JSON-LD blocks. */
