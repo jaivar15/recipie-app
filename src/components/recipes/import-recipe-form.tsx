@@ -6,11 +6,13 @@ import {
   importFromUrlAction,
   importFromJsonAction,
   importFromCsvAction,
+  previewCsvImportAction,
 } from "@/app/(app)/recipes/import/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -58,6 +60,9 @@ export function ImportRecipeForm({ households }: { households: HouseholdOption[]
   const [url, setUrl] = useState("");
   const [json, setJson] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvText, setCsvText] = useState<string | null>(null);
+  const [unmatchedIngredients, setUnmatchedIngredients] = useState<string[] | null>(null);
+  const [ingredientsToCreate, setIngredientsToCreate] = useState<Set<string>>(new Set());
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [visibility, setVisibility] = useState<"personal" | "household">(
     households.length > 0 ? "household" : "personal"
@@ -173,21 +178,128 @@ export function ImportRecipeForm({ households }: { households: HouseholdOption[]
             </p>
           </div>
           {visibilityControls}
-          <Button
-            disabled={!csvFile || isPending || (visibility === "household" && !householdId)}
-            onClick={() =>
-              run(async () => {
-                if (!csvFile) return;
-                const csvText = await readFileAsText(csvFile);
-                await importFromCsvAction(csvText, visibility, visibility === "household" ? householdId : null);
-                setCsvFile(null);
-                if (csvInputRef.current) csvInputRef.current.value = "";
-              })
-            }
-          >
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sheet className="h-4 w-4" />}
-            Import from CSV
-          </Button>
+
+          {unmatchedIngredients && unmatchedIngredients.length > 0 ? (
+            <div className="space-y-3 rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">
+                  {unmatchedIngredients.length} ingredient
+                  {unmatchedIngredients.length === 1 ? "" : "s"} not in your library
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Check any to create now (just a name — add nutrition later). Leave unchecked to
+                  import as plain text and link or create them whenever you like.
+                </p>
+              </div>
+              <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                {unmatchedIngredients.map((name) => (
+                  <label key={name} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={ingredientsToCreate.has(name)}
+                      onCheckedChange={(checked) =>
+                        setIngredientsToCreate((prev) => {
+                          const next = new Set(prev);
+                          if (checked) next.add(name);
+                          else next.delete(name);
+                          return next;
+                        })
+                      }
+                    />
+                    {name}
+                  </label>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIngredientsToCreate(new Set(unmatchedIngredients))}
+                >
+                  Create all
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIngredientsToCreate(new Set())}
+                >
+                  Leave all for later
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => {
+                    setUnmatchedIngredients(null);
+                    setCsvText(null);
+                    setIngredientsToCreate(new Set());
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={isPending || (visibility === "household" && !householdId)}
+                  onClick={() =>
+                    run(async () => {
+                      if (!csvText) return;
+                      await importFromCsvAction(
+                        csvText,
+                        visibility,
+                        visibility === "household" ? householdId : null,
+                        Array.from(ingredientsToCreate),
+                      );
+                      setCsvFile(null);
+                      setCsvText(null);
+                      setUnmatchedIngredients(null);
+                      setIngredientsToCreate(new Set());
+                      if (csvInputRef.current) csvInputRef.current.value = "";
+                    })
+                  }
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sheet className="h-4 w-4" />
+                  )}
+                  Continue import
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              disabled={!csvFile || isPending || (visibility === "household" && !householdId)}
+              onClick={() =>
+                run(async () => {
+                  if (!csvFile) return;
+                  const text = await readFileAsText(csvFile);
+                  const preview = await previewCsvImportAction(text);
+                  if (preview.unmatchedIngredientNames.length === 0) {
+                    await importFromCsvAction(
+                      text,
+                      visibility,
+                      visibility === "household" ? householdId : null,
+                      [],
+                    );
+                    setCsvFile(null);
+                    if (csvInputRef.current) csvInputRef.current.value = "";
+                  } else {
+                    setCsvText(text);
+                    setUnmatchedIngredients(preview.unmatchedIngredientNames);
+                  }
+                })
+              }
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sheet className="h-4 w-4" />
+              )}
+              Import from CSV
+            </Button>
+          )}
         </TabsContent>
         <TabsContent value="json" className="space-y-4 pt-4">
           <div className="space-y-2">

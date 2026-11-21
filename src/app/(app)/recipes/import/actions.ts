@@ -50,7 +50,7 @@ async function insertParsedRecipe(
       unit: i.unit ?? "",
       preparation_note: i.preparation_note ?? "",
       brand: "",
-      ingredient_id: "",
+      ingredient_id: i.ingredient_id ?? "",
       is_section_header: i.is_section_header ?? false,
     })),
     p_steps: parsed.steps.map((s) => ({
@@ -176,22 +176,89 @@ export async function importFromJsonAction(
   await createFromParsed(parsed, visibility, householdId);
 }
 
+/** Ingredients visible to the caller (RLS already scopes personal + every household they're in). */
+async function fetchIngredientNameMap(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<Map<string, string>> {
+  const { data } = await supabase.from("ingredients").select("id, name");
+  const map = new Map<string, string>();
+  for (const row of data ?? []) map.set(row.name.trim().toLowerCase(), row.id);
+  return map;
+}
+
+function distinctIngredientNames(recipes: ParsedRecipe[]): string[] {
+  const names = new Set<string>();
+  for (const recipe of recipes) {
+    for (const ing of recipe.ingredients) {
+      if (!ing.is_section_header && ing.ingredient_name.trim()) {
+        names.add(ing.ingredient_name.trim());
+      }
+    }
+  }
+  return Array.from(names);
+}
+
+/**
+ * Parses the CSV and reports which ingredient names don't match anything in
+ * the caller's library, so the UI can offer "create now" vs "leave as text,
+ * link later" before anything is actually written.
+ */
+export async function previewCsvImportAction(csvText: string) {
+  const supabase = await createClient();
+  const recipes = parseRecipeCsv(csvText);
+  const nameMap = await fetchIngredientNameMap(supabase);
+  const unmatched = distinctIngredientNames(recipes)
+    .filter((name) => !nameMap.has(name.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+
+  return { recipeCount: recipes.length, unmatchedIngredientNames: unmatched };
+}
+
 export async function importFromCsvAction(
   csvText: string,
   visibility: "personal" | "household",
   householdId: string | null,
+  createIngredientNames: string[] = [],
 ) {
   const ctx = await requireHouseholdContext();
   if (visibility === "household" && !ctx.activeHousehold) throw new Error("No active household");
 
+  const supabase = await createClient();
   const recipes = parseRecipeCsv(csvText);
+  const nameMap = await fetchIngredientNameMap(supabase);
+
+  for (const rawName of createIngredientNames) {
+    const key = rawName.trim().toLowerCase();
+    if (!key || nameMap.has(key)) continue;
+    const { data, error } = await supabase.rpc("create_ingredient", {
+      p_ingredient: {
+        household_id: visibility === "household" ? householdId : null,
+        visibility,
+        name: rawName.trim(),
+      },
+      p_nutrition: {},
+      p_conversions: [],
+    });
+    if (error) throw new Error(error.message);
+    nameMap.set(key, data as string);
+  }
+
+  const linkedRecipes = recipes.map((recipe) => ({
+    ...recipe,
+    ingredients: recipe.ingredients.map((ing) => {
+      if (ing.is_section_header) return ing;
+      const id = nameMap.get(ing.ingredient_name.trim().toLowerCase());
+      return id ? { ...ing, ingredient_id: id } : ing;
+    }),
+  }));
 
   const ids: string[] = [];
-  for (const parsed of recipes) {
+  for (const parsed of linkedRecipes) {
     ids.push(await insertParsedRecipe(parsed, visibility, householdId));
   }
 
   revalidatePath("/recipes");
+  revalidatePath("/ingredients");
   if (ids.length === 1) redirect(`/recipes/${ids[0]}/edit`);
   redirect("/recipes");
 }

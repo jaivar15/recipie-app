@@ -23,6 +23,8 @@ export type ParsedIngredient = {
   unit: MeasurementUnit | null;
   preparation_note: string | null;
   is_section_header?: boolean;
+  /** Set once matched (or newly created) against the ingredient library — null/absent stays free text. */
+  ingredient_id?: string | null;
 };
 
 /**
