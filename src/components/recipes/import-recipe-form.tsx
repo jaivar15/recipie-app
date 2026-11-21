@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Link as LinkIcon, FileJson, Loader2, Sheet } from "lucide-react";
+import { Link as LinkIcon, FileJson, Loader2, Sheet, Download } from "lucide-react";
 import {
   importFromUrlAction,
   importFromJsonAction,
@@ -22,6 +22,28 @@ import {
 } from "@/components/ui/select";
 
 type HouseholdOption = { id: string; name: string };
+
+const CSV_TEMPLATE = `Title,Description,Servings,Prep Time,Cook Time,Ingredients,Steps
+"Example Recipe","A short description of the dish",4,15,30,"# Sauce
+2 tbsp soy sauce
+1 tbsp sugar
+# Stir-fry
+200 g chicken
+1 cup broccoli","# Make the sauce
+Mix soy sauce and sugar.
+# Cook
+Stir-fry chicken then add broccoli and sauce."
+`;
+
+function downloadCsvTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "recipe-import-template.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function readFileAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -128,7 +150,13 @@ export function ImportRecipeForm({ households }: { households: HouseholdOption[]
         </TabsContent>
         <TabsContent value="csv" className="space-y-4 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="import-csv">Recipe CSV</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="import-csv">Recipe CSV</Label>
+              <Button type="button" variant="ghost" size="sm" onClick={downloadCsvTemplate}>
+                <Download className="h-3.5 w-3.5" />
+                Download template
+              </Button>
+            </div>
             <Input
               id="import-csv"
               ref={csvInputRef}
